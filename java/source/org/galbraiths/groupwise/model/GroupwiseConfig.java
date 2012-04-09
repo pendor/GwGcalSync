@@ -57,7 +57,7 @@ public class GroupwiseConfig {
         m_retrieveMonths = Integer.valueOf(properties.getProperty("months", "24"));
         m_proxyHost = properties.getProperty("proxy");
         m_proxyPort = Integer.valueOf(properties.getProperty("proxyPort", "0"));
-        m_listenIp = properties.getProperty("bind");
+        m_listenIp = properties.getProperty("bind", "127.0.0.1");
         m_listenPort = Integer.valueOf(properties.getProperty("port", "8123"));
 
       } finally {

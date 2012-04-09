@@ -75,11 +75,12 @@ public class CalendarScraperMinimal {
 
     final Calendar cal = Calendar.getInstance();
 
+    final int split = 12 * 5;
     final int splitMonths;
-    if(p_months < 36) {
+    if(p_months < split) {
       splitMonths = p_months / 2;
     } else {
-      splitMonths = p_months - 36;
+      splitMonths = p_months - split;
     }
 
     cal.add(Calendar.MONTH, -splitMonths);
@@ -196,8 +197,6 @@ public class CalendarScraperMinimal {
     if(response != 200) {
       processInvalidResponse(response, get);
     }
-
-
 
     final String responseBody = get.getResponseBodyAsString();
     final Node[] links = Parser.createParser(responseBody, null).extractAllNodesThatAre(LinkTag.class);

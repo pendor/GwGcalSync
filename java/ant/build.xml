@@ -1,0 +1,42 @@
+<project name="GroupwiseExporter" basedir=".." default="package">
+
+  <path id="classpath">
+    <fileset id="classpath.fileset" dir="${basedir}/jars" includes="**/*.jar"/>
+  </path>
+  
+  <target name="clean">
+    <delete dir="${basedir}/dist"/>
+    <delete dir="${basedir}/build"/>
+  </target>
+  
+  <target name="init">
+    <mkdir dir="${basedir}/dist"/>
+    <mkdir dir="${basedir}/build/classes"/>
+  </target>
+  
+  <target name="compile" depends="init">
+    <javac destdir="${basedir}/build/classes" srcdir="source" classpathref="classpath" includeantruntime="false" debug="true"/>
+  </target>
+  
+  
+  <target name="package" depends="clean,compile">
+    <pathconvert property="classpath.string" pathsep=" ">
+      <path refid="classpath"/>
+      <flattenmapper/>
+    </pathconvert>
+    
+    <copy todir="${basedir}/dist">
+      <fileset refid="classpath.fileset"/>
+      <fileset dir="${basedir}/resources" includes="**"/>
+    </copy>
+    
+    <jar destfile="${basedir}/dist/gwexporter.jar">
+      <fileset dir="${basedir}/build/classes"/>
+      <manifest>
+        <attribute name="Main-Class" value="org.galbraiths.groupwise.CommandLineUI"/>
+        <attribute name="Class-Path" value="${classpath.string}"/>
+      </manifest>
+    </jar>
+  </target>
+
+</project>
