@@ -1,4 +1,4 @@
-package org.galbraiths.groupwise;
+package org.galbraiths.groupwise.util;
 
 import java.io.Closeable;
 import java.io.IOException;

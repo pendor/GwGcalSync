@@ -1,4 +1,4 @@
-package org.galbraiths.groupwise;
+package org.galbraiths.groupwise.util;
 
 public class Sleep {
 

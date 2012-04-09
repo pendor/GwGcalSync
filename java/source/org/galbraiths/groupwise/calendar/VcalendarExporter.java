@@ -1,8 +1,10 @@
-package org.galbraiths.groupwise;
+package org.galbraiths.groupwise.calendar;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.List;
+
+import org.galbraiths.groupwise.util.StringUtils;
 
 
 public class VcalendarExporter {

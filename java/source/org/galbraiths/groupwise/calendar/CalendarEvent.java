@@ -1,4 +1,4 @@
-package org.galbraiths.groupwise;
+package org.galbraiths.groupwise.calendar;
 
 import java.util.ArrayList;
 import java.util.Date;

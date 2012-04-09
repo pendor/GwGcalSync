@@ -1,4 +1,4 @@
-package org.galbraiths.groupwise;
+package org.galbraiths.groupwise.util;
 
 public class StringUtils {
   public static boolean nullOrEmpty(final String s) {

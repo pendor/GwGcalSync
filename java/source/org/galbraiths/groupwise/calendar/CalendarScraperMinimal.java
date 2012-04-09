@@ -1,4 +1,4 @@
-package org.galbraiths.groupwise;
+package org.galbraiths.groupwise.calendar;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -19,6 +19,8 @@ import org.apache.commons.httpclient.NameValuePair;
 import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.commons.httpclient.methods.PostMethod;
 import org.apache.log4j.Logger;
+import org.galbraiths.groupwise.model.GroupwiseConfig;
+import org.galbraiths.groupwise.util.StringUtils;
 import org.htmlparser.Node;
 import org.htmlparser.Parser;
 import org.htmlparser.Text;
@@ -29,34 +31,25 @@ import org.htmlparser.util.NodeList;
 public class CalendarScraperMinimal {
   // I despise commons-logging but am using it as commons HTTP client uses it
   private static Logger logger = Logger.getLogger(CalendarScraperMinimal.class);
-  private final String m_baseUrl;
-  private final String m_username;
-  private final String m_password;
-  private final String m_proxy;
+  private final GroupwiseConfig m_config;
+
   private String m_userContext;
   private final HttpClient m_client;
 
-  public CalendarScraperMinimal(final String p_baseUrl, final String p_username, final String p_password, final String p_proxy) {
-    if(p_baseUrl.endsWith("/")) {
-      m_baseUrl = p_baseUrl.substring(0, p_baseUrl.length() - 1);
-    } else {
-      m_baseUrl = p_baseUrl;
-    }
-    m_username = p_username;
-    m_password = p_password;
-    m_proxy = p_proxy;
+  public CalendarScraperMinimal(final GroupwiseConfig p_config) {
+    m_config = p_config;
 
     m_client = new HttpClient();
     m_client.getParams().setParameter("http.protocol.single-cookie-header", true);
 
-    if(StringUtils.notNullOrEmpty(m_proxy)) {
+    if(StringUtils.notNullOrEmpty(m_config.getProxyHost())) {
       final HostConfiguration conf = m_client.getHostConfiguration();
-      conf.setProxy(m_proxy, 80);
+      conf.setProxy(m_config.getProxyHost(), m_config.getProxyPort());
     }
   }
 
   /**
-   * Converts the GroupWise 7 (and earlier?) *simple* web interface into a series of {@link org.galbraiths.groupwise.CalendarEvent}
+   * Converts the GroupWise 7 (and earlier?) *simple* web interface into a series of {@link org.galbraiths.groupwise.calendar.CalendarEvent}
    * s.
    *
    * @param baseUrl
@@ -146,7 +139,7 @@ public class CalendarScraperMinimal {
   private void getUserContext() throws Exception {
     // get the sign-in web page. This is required to obtain some sort of unique session identifier, called the
     // "User.context"
-    final GetMethod get = new GetMethod(m_baseUrl + "/gw/webacc?User.interface=simple");
+    final GetMethod get = new GetMethod(m_config.getUrl() + "/gw/webacc?User.interface=simple");
     final int response = m_client.executeMethod(get);
     if(response != 200) {
       processInvalidResponse(response, get);
@@ -159,11 +152,15 @@ public class CalendarScraperMinimal {
   }
 
   private void authenticateUser() throws Exception {
-    final PostMethod post = new PostMethod(m_baseUrl + "/gw/webacc");
+    final PostMethod post = new PostMethod(m_config.getUrl() + "/gw/webacc");
     final NameValuePair[] pairs = new NameValuePair[] {
-        new NameValuePair("User.id", m_username), new NameValuePair("User.password", m_password),
-        new NameValuePair("User.interface", "simple"), new NameValuePair("User.context", m_userContext),
-        new NameValuePair("error", "login"), new NameValuePair("merge", "main"), new NameValuePair("action", "User.Login"),
+        new NameValuePair("User.id", m_config.getUsername()),
+        new NameValuePair("User.password", m_config.getPassword()),
+        new NameValuePair("User.interface", "simple"),
+        new NameValuePair("User.context", m_userContext),
+        new NameValuePair("error", "login"),
+        new NameValuePair("merge", "main"),
+        new NameValuePair("action", "User.Login"),
         new NameValuePair("Url.displayDraftItems", "1")
     };
     post.setRequestBody(pairs);
@@ -188,7 +185,7 @@ public class CalendarScraperMinimal {
     calendar.add(Calendar.DAY_OF_YEAR, -1);
     final Date date = calendar.getTime();
     final long time = date.getTime();
-    GetMethod get = new GetMethod(m_baseUrl + "/gw/webacc?User.context=" + m_userContext
+    GetMethod get = new GetMethod(m_config.getUrl() + "/gw/webacc?User.context=" + m_userContext
         + "&action=Calendar.Search&Calendar.startDate=" + time + "&Calendar.durationType=Month&merge=calendar");
 
     int response = m_client.executeMethod(get);
@@ -210,7 +207,7 @@ public class CalendarScraperMinimal {
           continue;
         }
         eventURLs.add(url);
-        get = new GetMethod(m_baseUrl + url);
+        get = new GetMethod(m_config.getUrl() + url);
         response = m_client.executeMethod(get);
         if(response != 200) {
           processInvalidResponse(response, get);
