@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="java/source"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="java/jars/commons-codec-1.3.jar"/>
+	<classpathentry kind="lib" path="java/jars/commons-httpclient-3.0-rc2.jar"/>
+	<classpathentry kind="lib" path="java/jars/htmllexer.jar"/>
+	<classpathentry kind="lib" path="java/jars/htmlparser.jar"/>
+	<classpathentry kind="lib" path="java/jars/jcl-over-slf4j.jar"/>
+	<classpathentry kind="lib" path="java/jars/jul-to-slf4j.jar"/>
+	<classpathentry kind="lib" path="java/jars/slf4j-api.jar"/>
+	<classpathentry kind="lib" path="java/jars/slf4j-ext.jar"/>
+	<classpathentry kind="lib" path="java/jars/slf4j-log4j12.jar"/>
+	<classpathentry kind="lib" path="java/jars/thumbelina.jar"/>
+	<classpathentry kind="lib" path="java/jars/log4j.jar"/>
+	<classpathentry kind="lib" path="java/jars/simple-4.1.21.jar" sourcepath="java/jars/simple-4.1.21-source.zip"/>
+	<classpathentry kind="output" path="java/build/classes"/>
+</classpath>
