@@ -29,7 +29,6 @@ import org.htmlparser.tags.LinkTag;
 import org.htmlparser.util.NodeList;
 
 public class CalendarScraperMinimal {
-  // I despise commons-logging but am using it as commons HTTP client uses it
   private static Logger logger = Logger.getLogger(CalendarScraperMinimal.class);
   private final GroupwiseConfig m_config;
 
