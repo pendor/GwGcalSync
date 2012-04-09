@@ -76,7 +76,7 @@ public class SunHttpServer implements HttpHandler {
     byte[] bytes;
 
     try {
-      bytes = m_thread.getVCal().getBytes("UTF8");
+      bytes = m_thread.getVCal().toString().getBytes("UTF8");
       resCode = 200;
       contentType = "text/calendar;charset=UTF-8";
     } catch(final TimeoutException ex) {

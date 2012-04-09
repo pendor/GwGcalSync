@@ -26,14 +26,23 @@ import org.htmlparser.Parser;
 import org.htmlparser.Text;
 import org.htmlparser.filters.TagNameFilter;
 import org.htmlparser.tags.LinkTag;
+import org.htmlparser.util.NodeIterator;
 import org.htmlparser.util.NodeList;
 
+/**
+ * Note this class is not thread safe due to the way it caches DateFormat instances.
+ *
+ * @author zbedell
+ */
 public class CalendarScraperMinimal {
   private static Logger logger = Logger.getLogger(CalendarScraperMinimal.class);
   private final GroupwiseConfig m_config;
 
   private String m_userContext;
   private final HttpClient m_client;
+
+  private final DateFormat m_gwDateFormat = new SimpleDateFormat("MMMM d, yyyy");
+  private final DateFormat m_gwTimeFormat = new SimpleDateFormat("h:mm a");
 
   public CalendarScraperMinimal(final GroupwiseConfig p_config) {
     m_config = p_config;
@@ -48,8 +57,8 @@ public class CalendarScraperMinimal {
   }
 
   /**
-   * Converts the GroupWise 7 (and earlier?) *simple* web interface into a series of {@link org.galbraiths.groupwise.calendar.CalendarEvent}
-   * s.
+   * Converts the GroupWise 7 (and earlier?) *simple* web interface into a series of
+   * {@link org.galbraiths.groupwise.calendar.CalendarEvent}s.
    *
    * @param baseUrl
    *          the base of all the requests, such as <code>https://web.mydomain.com/</code>. The trailing slash is required.
@@ -169,16 +178,12 @@ public class CalendarScraperMinimal {
       processInvalidResponse(response, post);
     }
 
-    @SuppressWarnings("unused")
-    final String responseBody = post.getResponseBodyAsString();
+//    @SuppressWarnings("unused")
+//    final String responseBody = post.getResponseBodyAsString();
   }
 
   @SuppressWarnings("deprecation")
   private List<CalendarEvent> getEventLinks(final int month, final int year) throws Exception {
-    final List<CalendarEvent> events = new ArrayList<CalendarEvent>();
-    final DateFormat gwDateFormat = new SimpleDateFormat("MMMM d, yyyy");
-    final DateFormat gwTimeFormat = new SimpleDateFormat("h:mm a");
-
     final Calendar calendar = Calendar.getInstance();
     calendar.set(year, month - 1, 1);
     calendar.add(Calendar.DAY_OF_YEAR, -1);
@@ -192,11 +197,12 @@ public class CalendarScraperMinimal {
       processInvalidResponse(response, get);
     }
 
-    final Set<String> eventURLs = new HashSet<String>();
+
 
     final String responseBody = get.getResponseBodyAsString();
-    Parser parser = Parser.createParser(responseBody, null);
-    final Node[] links = parser.extractAllNodesThatAre(LinkTag.class);
+    final Node[] links = Parser.createParser(responseBody, null).extractAllNodesThatAre(LinkTag.class);
+    final List<CalendarEvent> events = new ArrayList<CalendarEvent>(links.length);
+    final Set<String> eventURLs = new HashSet<String>(links.length);
     for(final Node link2 : links) {
       final LinkTag link = (LinkTag) link2;
       final String href = link.getAttribute("href");
@@ -215,15 +221,18 @@ public class CalendarScraperMinimal {
         String mode = null;
         final Map<String,String> values = new HashMap<String,String>();
 
-        parser = Parser.createParser(get.getResponseBodyAsString(), null);
-        final Node[] cells = parser.extractAllNodesThatMatch(new TagNameFilter("td")).toNodeArray();
-        for(final Node cell : cells) {
+        final Parser parser = Parser.createParser(get.getResponseBodyAsString(), null);
+        final NodeIterator cells = parser.extractAllNodesThatMatch(new TagNameFilter("td")).elements();
+        while(cells.hasMoreNodes()) {
+          final Node cell = cells.nextNode();
           final NodeList list = cell.getChildren();
           if(list == null) {
             continue;
           }
-          final Node[] children = list.toNodeArray();
-          for(final Node child : children) {
+
+          final NodeIterator it = list.elements();
+          while(it.hasMoreNodes()) {
+            final Node child = it.nextNode();
             if(child instanceof Text) {
               final String text = convertTextToString((Text) child);
               if(text.equals("Subject:")) {
@@ -263,7 +272,7 @@ public class CalendarScraperMinimal {
         Date eventDate = null;
         try {
           final String[] gwDate = values.get("Date:").split(" - ");
-          eventDate = gwDateFormat.parse(gwDate[1]);
+          eventDate = m_gwDateFormat.parse(gwDate[1]);
         } catch(final Exception e) {
           logger.error("Couldn't parse Date field", e);
           logger.error(printFields(values));
@@ -278,8 +287,8 @@ public class CalendarScraperMinimal {
             endTime = new Date(0,0,0,23,59,59);
           } else {
             final String[] times = sT.split(" - ");
-            startTime = gwTimeFormat.parse(times[0]);
-            endTime = gwTimeFormat.parse(times[1]);
+            startTime = m_gwTimeFormat.parse(times[0]);
+            endTime = m_gwTimeFormat.parse(times[1]);
           }
         } catch(final Exception e) {
           logger.error("Couldn't parse Time field", e);

@@ -13,7 +13,7 @@ import org.galbraiths.groupwise.util.StringUtils;
 public class CalendarUpdateThread extends Thread {
   private static final String ERR = "Waiting for calendar refresh...";
 
-  private String m_calendar = "";
+  private CharSequence m_calendar = "";
   private Date m_lastModified = new Date();
 
   private final GroupwiseConfig m_config;
@@ -26,7 +26,7 @@ public class CalendarUpdateThread extends Thread {
     m_scraper = new CalendarScraperMinimal(m_config);
   }
 
-  public String getVCal() throws TimeoutException {
+  public CharSequence getVCal() throws TimeoutException {
     boolean locked = false;
     try {
       if(m_lock.tryLock(10, TimeUnit.SECONDS)) {
@@ -56,7 +56,7 @@ public class CalendarUpdateThread extends Thread {
     while(true) {
       boolean locked = false;
       try {
-        final String cal = VcalendarExporter.getVcalendar(m_scraper.getCalendarEvents(m_config.getRetrieveMonths()));
+        final CharSequence cal = VcalendarExporter.getVcalendar(m_scraper.getCalendarEvents(m_config.getRetrieveMonths()));
         if(!m_calendar.equals(cal)) {
           m_lock.lock();
           locked = true;
