@@ -18,7 +18,8 @@ import org.apache.commons.httpclient.HttpMethod;
 import org.apache.commons.httpclient.NameValuePair;
 import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.commons.httpclient.methods.PostMethod;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.galbraiths.groupwise.model.GroupwiseConfig;
 import org.galbraiths.groupwise.util.StringUtils;
 import org.htmlparser.Node;
@@ -35,7 +36,7 @@ import org.htmlparser.util.NodeList;
  * @author zbedell
  */
 public class CalendarScraperMinimal {
-  private static Logger logger = Logger.getLogger(CalendarScraperMinimal.class);
+  private static Log logger = LogFactory.getLog(CalendarScraperMinimal.class);
   private final GroupwiseConfig m_config;
 
   private String m_userContext;

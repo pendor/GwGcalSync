@@ -53,6 +53,7 @@ public class CalendarUpdateThread extends Thread {
 
   @Override
   public void run() {
+    System.err.println("Starting first scrape.  Calendar data will be available shortly...");
     while(true) {
       boolean locked = false;
       try {
@@ -63,7 +64,7 @@ public class CalendarUpdateThread extends Thread {
 
           if(StringUtils.nullOrEmpty(m_calendar)) {
             // First time...
-            System.err.println("Calendar now available");
+            System.err.println("Calendar data now available.");
           }
 
           m_calendar = cal;

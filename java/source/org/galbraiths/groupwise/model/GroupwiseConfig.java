@@ -2,8 +2,11 @@ package org.galbraiths.groupwise.model;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Properties;
+import java.util.logging.LogManager;
 
 import org.galbraiths.groupwise.util.Closer;
 
@@ -28,18 +31,20 @@ public class GroupwiseConfig {
   private static final String DEFAULT_CFG_FILE =
       System.getProperty("user.home") + File.separatorChar + ".groupwiseexporter" + File.separatorChar + "settings.properties";
 
-  /** Default filename is relative to where ever cfg file is. */
-  private static final String DEFAULT_LOG4J_CONFIG = "log4j.properties";
+  private static final String LOG_CFG_NAME = "logging.properties";
+
+  private static final String DEFAULT_LOG_CONFIG =
+      System.getProperty("user.home") + File.separatorChar + ".groupwiseexporter" + File.separatorChar + LOG_CFG_NAME;
 
   public GroupwiseConfig() throws IOException {
-    this(new File(DEFAULT_CFG_FILE));
+    this(new File(DEFAULT_CFG_FILE), new File(DEFAULT_LOG_CONFIG));
   }
 
-  public GroupwiseConfig(final File p_cfgFile) throws IOException {
-    System.setProperty("log4j.configuration", new File(p_cfgFile.getParentFile(), DEFAULT_LOG4J_CONFIG).toURI().toString());
+  public GroupwiseConfig(final File p_cfgFile, final File p_logCfgFile) throws IOException {
+    loadLoggingConfig(p_logCfgFile);
 
-    final Properties properties = new Properties();
     if(p_cfgFile.exists()) {
+      final Properties properties = new Properties();
       FileInputStream in = null;
       try {
         in = new FileInputStream(p_cfgFile);
@@ -64,10 +69,25 @@ public class GroupwiseConfig {
         Closer.close(in);
       }
     } else {
-      throw new IOException("Missing configuration file at $HOME/.groupwiseexporter/settings.properties");
+      throw new FileNotFoundException("Missing configuration file at $HOME/.groupwiseexporter/settings.properties");
     }
   }
 
+  public void loadLoggingConfig(final File p_logCfgFile) throws IOException {
+    final Properties properties = new Properties();
+    InputStream in = null;
+    try {
+      if(p_logCfgFile.exists()) {
+        in = new FileInputStream(p_logCfgFile);
+      } else {
+        in = GroupwiseConfig.class.getClassLoader().getResourceAsStream(LOG_CFG_NAME);
+      }
+      properties.load(in);
+      LogManager.getLogManager().readConfiguration(in);
+    } finally {
+      Closer.close(in);
+    }
+  }
 
   public int getRefreshMinutes() {
     return this.m_refreshMinutes;

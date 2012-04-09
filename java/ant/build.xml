@@ -32,6 +32,7 @@
     
     <jar destfile="${basedir}/dist/gwexporter.jar">
       <fileset dir="${basedir}/build/classes"/>
+      <fileset dir="${basedir}/source" excludes="**/*.java" />
       <manifest>
         <attribute name="Main-Class" value="org.galbraiths.groupwise.CommandLineUI"/>
         <attribute name="Class-Path" value="${classpath.string}"/>
