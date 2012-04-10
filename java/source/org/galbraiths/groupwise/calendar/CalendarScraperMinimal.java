@@ -90,7 +90,7 @@ public class CalendarScraperMinimal {
     for(int i = 0; i < p_months; i++) {
       final int year = cal.get(Calendar.YEAR);
       final int month = (cal.get(Calendar.MONTH) + 1); // Calendar is 0-based for some odd reason
-      logger.info(String.format("Scraping %d/%d...", month, year));
+      logger.debug(String.format("Scraping %d/%d...", month, year));
       final List<CalendarEvent> events = getEventLinks(month, year);
       calendarEvents.addAll(events);
       cal.add(Calendar.MONTH, 1);
