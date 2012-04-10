@@ -4,6 +4,11 @@
     <fileset id="classpath.fileset" dir="${basedir}/jars" includes="**/*.jar"/>
   </path>
   
+  <path id="classpath.gcald">
+    <fileset id="classpath.gcald.fileset" dir="${basedir}/gcald_jars" includes="**/*.jar"/>
+    <fileset refid="classpath.fileset"/>
+  </path>
+  
   <target name="clean">
     <delete dir="${basedir}/dist"/>
     <delete dir="${basedir}/build"/>
@@ -12,21 +17,34 @@
   <target name="init">
     <mkdir dir="${basedir}/dist"/>
     <mkdir dir="${basedir}/build/classes"/>
+    <mkdir dir="${basedir}/build/gcald_classes"/>
   </target>
   
   <target name="compile" depends="init">
-    <javac destdir="${basedir}/build/classes" srcdir="source" classpathref="classpath" includeantruntime="false" debug="true"/>
+    <javac destdir="${basedir}/build/gcald_classes" srcdir="gcald_source" classpathref="classpath.gcald" includeantruntime="false" debug="true"/>
+    <javac destdir="${basedir}/build/classes" srcdir="source" classpathref="classpath" includeantruntime="false" debug="true">
+      <classpath>
+        <path path="${basedir}/build/gcald_classes"/>
+      </classpath>
+    </javac>
   </target>
   
   
   <target name="package" depends="clean,compile">
+    <jar destfile="${basedir}/dist/gcald.jar">
+      <fileset dir="${basedir}/build/gcald_classes"/>
+    </jar>
+    
     <pathconvert property="classpath.string" pathsep=" ">
       <path refid="classpath"/>
+      <path refid="classpath.gcald"/>
+      <path location="${basedir}/dist/gcald.jar"/>
       <flattenmapper/>
     </pathconvert>
     
     <copy todir="${basedir}/dist">
       <fileset refid="classpath.fileset"/>
+      <fileset refid="classpath.gcald.fileset"/>
       <fileset dir="${basedir}/resources" includes="**"/>
     </copy>
     

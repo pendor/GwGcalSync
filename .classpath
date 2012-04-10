@@ -1,10 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="java/source"/>
+	<classpathentry kind="src" path="java/gcald_source"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="java/jars/commons-codec-1.3.jar"/>
 	<classpathentry kind="lib" path="java/jars/commons-httpclient-3.0-rc2.jar"/>
 	<classpathentry kind="lib" path="java/jars/htmlparser.jar"/>
 	<classpathentry kind="lib" path="java/jars/commons-logging-1.1.1.jar"/>
+	<classpathentry kind="lib" path="java/gcald_jars/ical4j.jar"/>
+	<classpathentry kind="lib" path="java/gcald_jars/gdata-calendar.jar"/>
+	<classpathentry kind="lib" path="java/gcald_jars/gdata-client.jar"/>
+	<classpathentry kind="lib" path="java/gcald_jars/mail.jar"/>
+	<classpathentry kind="lib" path="java/gcald_jars/jdom.jar"/>
+	<classpathentry kind="lib" path="java/gcald_jars/commons-lang.jar"/>
 	<classpathentry kind="output" path="java/build/classes"/>
 </classpath>

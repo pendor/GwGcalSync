@@ -25,8 +25,9 @@ public class CommandLineUI {
     final CalendarUpdateThread calUpdate = new CalendarUpdateThread(config);
     calUpdate.start();
 
-    //final SimpleHttpServer server = new SimpleHttpServer(config, calUpdate);
-    final SunHttpServer server = new SunHttpServer(config, calUpdate);
-    server.start();
+    if(config.isHttpServerEnabled()) {
+      final SunHttpServer server = new SunHttpServer(config, calUpdate);
+      server.start();
+    }
   }
 }
