@@ -40,15 +40,17 @@ public class GroupwiseConfig {
   private String m_gmailProxyHost;
   private int m_gmailProxyPort;
 
+  private boolean m_oneShot;
+
   private final File m_usedConfigFile;
 
   private static final String DEFAULT_CFG_FILE =
-      System.getProperty("user.home") + File.separatorChar + ".groupwiseexporter" + File.separatorChar + "settings.properties";
+      System.getProperty("user.home") + File.separatorChar + ".gwgcalsync" + File.separatorChar + "settings.properties";
 
   private static final String LOG_CFG_NAME = "logging.properties";
 
   private static final String DEFAULT_LOG_CONFIG =
-      System.getProperty("user.home") + File.separatorChar + ".groupwiseexporter" + File.separatorChar + LOG_CFG_NAME;
+      System.getProperty("user.home") + File.separatorChar + ".gwgcalsync" + File.separatorChar + LOG_CFG_NAME;
 
   public GroupwiseConfig() throws IOException {
     this(new File(DEFAULT_CFG_FILE), new File(DEFAULT_LOG_CONFIG));
@@ -85,6 +87,8 @@ public class GroupwiseConfig {
         m_gmailCalendarName = properties.getProperty("gmail.calendar");
         m_gmailProxyHost = properties.getProperty("gmail.proxy");
         m_gmailProxyPort = Integer.valueOf(properties.getProperty("gmail.proxyPort", "0"));
+
+        m_oneShot = Boolean.getBoolean(properties.getProperty("oneshot", "false"));
 
       } finally {
         Closer.close(in);
@@ -238,5 +242,13 @@ public class GroupwiseConfig {
 
   public void setGmailProxyPort(final int p_gmailProxyPort) {
     this.m_gmailProxyPort = p_gmailProxyPort;
+  }
+
+  public boolean isOneShot() {
+    return m_oneShot;
+  }
+
+  public void setOneShot(final boolean oneShot) {
+    this.m_oneShot = oneShot;
   }
 }

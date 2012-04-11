@@ -48,12 +48,15 @@
       <fileset dir="${basedir}/resources" includes="**"/>
     </copy>
     
-    <jar destfile="${basedir}/dist/gwexporter.jar">
+    <jar destfile="${basedir}/dist/gwgcalsync.jar">
       <fileset dir="${basedir}/build/classes"/>
       <fileset dir="${basedir}/source" excludes="**/*.java" />
       <manifest>
         <attribute name="Main-Class" value="org.galbraiths.groupwise.CommandLineUI"/>
         <attribute name="Class-Path" value="${classpath.string}"/>
+        <attribute name="Implementation-Title" value="GwGcalSync"/> 
+        <attribute name="Implementation-Version" value="1.0"/>
+        <attribute name="Implementation-Vendor" value="iphonebookshelf.com"/>
       </manifest>
     </jar>
   </target>

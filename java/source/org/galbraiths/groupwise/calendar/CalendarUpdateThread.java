@@ -19,6 +19,11 @@ import org.galbraiths.groupwise.util.Closer;
 import org.galbraiths.groupwise.util.Sleep;
 import org.galbraiths.groupwise.util.StringUtils;
 
+/**
+ * Thread to periodically scrape Groupwise, write the ics to a file, and (if configured) push contents to Google.
+ *
+ * @author zbedell
+ */
 public class CalendarUpdateThread extends Thread {
   private static Log logger = LogFactory.getLog(CalendarUpdateThread.class);
   private static final String ERR = "Waiting for calendar refresh...";
@@ -29,6 +34,8 @@ public class CalendarUpdateThread extends Thread {
   private final Lock m_lock = new ReentrantLock();
   private final CalendarScraperMinimal m_scraper;
   private final GmailPublisher m_gmailPub;
+
+  private boolean m_firstTime = true;
 
   public CalendarUpdateThread(final GroupwiseConfig p_cfg) throws IOException {
     super("Calendar refresh thread");
@@ -114,36 +121,38 @@ public class CalendarUpdateThread extends Thread {
 
   @Override
   public void run() {
-    logger.info("Starting first scrape.  Calendar data will be available shortly...");
-    boolean bFirst = true;
     for(;;) {
-      boolean locked = false;
-      try {
-        final CharSequence cal = VcalendarExporter.getVcalendar(m_scraper.getCalendarEvents(m_config.getRetrieveMonths()));
-        if(!getCalendar().equals(cal)) {
-          m_lock.lock();
-          locked = true;
-          setCalendar(cal);
-          m_lastModified = new Date();
+      scanOnce();
+      Sleep.sleepMinutes(m_config.getRefreshMinutes());
+    }
+  }
 
-          if(bFirst) {
-            // First time...
-            bFirst = false;
-            logger.info("Calendar data now available.");
-          }
+  public void scanOnce() {
+    boolean locked = false;
+    try {
+      final CharSequence cal = VcalendarExporter.getVcalendar(m_scraper.getCalendarEvents(m_config.getRetrieveMonths()));
+      if(!getCalendar().equals(cal)) {
+        m_lock.lock();
+        locked = true;
+        setCalendar(cal);
+        m_lastModified = new Date();
 
-          if(m_gmailPub != null) {
-            m_gmailPub.push(m_config.getCalendarCache());
-          }
+        if(m_firstTime) {
+          // First time...
+          m_firstTime = false;
+          logger.info("Initial scrape completed.  Calendar data now available.");
         }
-      } catch(final Exception e) {
-        e.printStackTrace();
-      } finally {
-        if(locked) {
-          m_lock.unlock();
+
+        if(m_gmailPub != null) {
+          m_gmailPub.push(m_config.getCalendarCache());
         }
       }
-      Sleep.sleepMinutes(m_config.getRefreshMinutes());
+    } catch(final Exception e) {
+      e.printStackTrace();
+    } finally {
+      if(locked) {
+        m_lock.unlock();
+      }
     }
   }
 }

@@ -15,7 +15,7 @@ public class VcalendarExporter {
 
     sb.append("BEGIN:VCALENDAR\n")
       .append("VERSION:2.0\n")
-      .append("PRODID:-//Ben Galbraith//Groupwise Scraper//EN\n")
+      .append("PRODID:-//thebedells.org//GwGcalSync//EN\n")
       .append("CALSCALE:GREGORIAN\n")
       .append("METHOD:PUBLISH\n")
 //    .append("BEGIN:VTIMEZONE\n")

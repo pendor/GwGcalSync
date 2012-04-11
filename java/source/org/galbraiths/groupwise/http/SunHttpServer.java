@@ -28,7 +28,7 @@ import com.sun.net.httpserver.HttpServer;
  */
 public class SunHttpServer implements HttpHandler {
 
-  private static final String VERSION = "1.5 (simple)";
+  private static final String VERSION = "1.0";
 
   private final CalendarUpdateThread m_thread;
   private final GroupwiseConfig m_config;
@@ -89,7 +89,7 @@ public class SunHttpServer implements HttpHandler {
     OutputStream out = null;
     try {
       final Headers head = exchange.getResponseHeaders();
-      head.add("Server", "GroupWise Exporter v" + VERSION);
+      head.add("Server", "GwGcalSync v" + VERSION);
       head.add("Last-Modified", m_dateFormat.format(m_thread.getLastModified()));
       head.add("Content-Type", contentType);
       exchange.sendResponseHeaders(resCode, bytes.length);

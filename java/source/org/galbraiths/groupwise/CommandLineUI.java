@@ -2,32 +2,43 @@ package org.galbraiths.groupwise;
 
 import java.io.FileNotFoundException;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.galbraiths.groupwise.calendar.CalendarUpdateThread;
 import org.galbraiths.groupwise.http.SunHttpServer;
 import org.galbraiths.groupwise.model.GroupwiseConfig;
 
 /**
- * Simple command line launcher.
+ * Main class.
  *
  * @author zbedell
  */
 public class CommandLineUI {
+  private static Log logger = LogFactory.getLog("GwGcalSync");
+
   public static void main(final String[] args) throws Exception {
     final GroupwiseConfig config;
     try {
       config = new GroupwiseConfig();
     } catch(final FileNotFoundException ex) {
-      System.err.println(ex.getMessage());
-      System.err.println("Please copy the default settings file into a folder in your home directory and edit it appropriately.");
+      logger.fatal(ex.getMessage());
+      logger.fatal("Please copy the default settings file into a folder in your home directory and edit it appropriately.");
       return;
     }
 
     final CalendarUpdateThread calUpdate = new CalendarUpdateThread(config);
-    calUpdate.start();
+    if(config.isOneShot()) {
+      logger.info("Set for one-shot mode.  Will exit after sync.");
+      calUpdate.scanOnce();
+    } else {
+      logger.info("Starting update thread...");
+      calUpdate.start();
 
-    if(config.isHttpServerEnabled()) {
-      final SunHttpServer server = new SunHttpServer(config, calUpdate);
-      server.start();
+      if(config.isHttpServerEnabled()) {
+        logger.info("Starting HTTP Server on " + config.getListenIp() + ":" + config.getListenPort());
+        final SunHttpServer server = new SunHttpServer(config, calUpdate);
+        server.start();
+      }
     }
   }
 }
