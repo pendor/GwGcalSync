@@ -56,7 +56,7 @@ public class GroupwiseConfig {
     this(new File(DEFAULT_CFG_FILE), new File(DEFAULT_LOG_CONFIG));
   }
 
-  public GroupwiseConfig(final File p_cfgFile, final File p_logCfgFile) throws IOException {
+  private GroupwiseConfig(final File p_cfgFile, final File p_logCfgFile) throws IOException {
     loadLoggingConfig(p_logCfgFile);
 
     if(p_cfgFile.exists()) {
@@ -98,7 +98,7 @@ public class GroupwiseConfig {
     }
   }
 
-  public void loadLoggingConfig(final File p_logCfgFile) throws IOException {
+  private void loadLoggingConfig(final File p_logCfgFile) throws IOException {
     BufferedReader rdr = null;
     ByteArrayInputStream bis = null;
     try {
@@ -128,9 +128,6 @@ public class GroupwiseConfig {
       final String sReplaced = sbProps.toString().replaceAll("\\$\\{work\\.dir\\}", p_logCfgFile.getParent());
       bis = new ByteArrayInputStream(sReplaced.getBytes("UTF-8"));
       LogManager.getLogManager().readConfiguration(bis);
-
-      Logger.getLogger("GroupwiseConfig").info("Logging configured successfully");
-
     } finally {
       Closer.close(rdr);
       Closer.close(bis);

@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-public class CalendarEvent {
+class CalendarEvent {
   private Date m_eventStart;
   private Date m_eventStop;
   private String m_description;

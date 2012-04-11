@@ -6,7 +6,7 @@
 // Apache License
 // Version 2.0, January 2004
 // http://www.apache.org/licenses/
-// 
+//
 // Project home:
 // http://gcaldaemon.sourceforge.net
 //
@@ -16,9 +16,9 @@ import java.io.Writer;
 
 /**
  * Unsynchronized StringBuffer-like class for the faster string concatenation.
- * 
+ *
  * Created: Jan 03, 2007 12:50:56 PM
- * 
+ *
  * @author Andras Berkes
  */
 public final class QuickWriter extends Writer {
@@ -28,7 +28,7 @@ public final class QuickWriter extends Writer {
 
 	// --- CONSTRUCTORS ---
 
-	public QuickWriter(int initialSize) {
+	public QuickWriter(final int initialSize) {
 		buffer = new char[initialSize];
 	}
 
@@ -36,11 +36,13 @@ public final class QuickWriter extends Writer {
 		buffer = new char[1024];
 	}
 
-	public final void close() {
+	@Override
+  public final void close() {
 		flush();
 	}
 
-	public final void flush() {
+	@Override
+  public final void flush() {
 		length = 0;
 		if (buffer.length > 20000) {
 			buffer = new char[2048];
@@ -49,22 +51,22 @@ public final class QuickWriter extends Writer {
 
 	/**
 	 * Expands the buffer.
-	 * 
+	 *
 	 * @param newLength
 	 */
-	private final void expandBuffer(int newLength) {
+	private final void expandBuffer(final int newLength) {
 		int doubleLength = newLength * 2;
 		if (doubleLength < 0) {
 			doubleLength = Integer.MAX_VALUE;
 		}
-		char copy[] = new char[doubleLength];
+		final char copy[] = new char[doubleLength];
 		System.arraycopy(buffer, 0, copy, 0, length);
 		buffer = copy;
 	}
 
 	/**
 	 * Returns the length of the buffer.
-	 * 
+	 *
 	 * @return int
 	 */
 	public final int length() {
@@ -73,11 +75,11 @@ public final class QuickWriter extends Writer {
 
 	/**
 	 * Sets the length of the buffer.
-	 * 
+	 *
 	 * @param newLength
 	 *            new length
 	 */
-	public final void setLength(int newLength) {
+	public final void setLength(final int newLength) {
 		if (length != newLength) {
 			if (length > newLength) {
 				length = newLength;
@@ -89,22 +91,22 @@ public final class QuickWriter extends Writer {
 
 	/**
 	 * Returns the buffer's characters.
-	 * 
+	 *
 	 * @return char[]
 	 */
 	public final char[] getChars() {
-		char[] copy = new char[length];
+		final char[] copy = new char[length];
 		System.arraycopy(buffer, 0, copy, 0, length);
 		return copy;
 	}
 
 	/**
 	 * Returns the buffer' content as ASCII bytes.
-	 * 
+	 *
 	 * @return byte[]
 	 */
 	public final byte[] getBytes() {
-		byte[] bytes = new byte[length];
+		final byte[] bytes = new byte[length];
 		for (int i = 0; i < length; i++) {
 			bytes[i] = (byte) buffer[i];
 		}
@@ -113,20 +115,22 @@ public final class QuickWriter extends Writer {
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see java.lang.Object#toString()
 	 */
-	public final String toString() {
+	@Override
+  public final String toString() {
 		return new String(buffer, 0, length);
 	}
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see java.io.Writer#write(char[], int, int)
 	 */
-	public final void write(char[] chars, int off, int len) {
-		int newLength = length + len;
+	@Override
+  public final void write(final char[] chars, final int off, final int len) {
+		final int newLength = length + len;
 		if (newLength > buffer.length) {
 			expandBuffer(newLength);
 		}
@@ -136,14 +140,15 @@ public final class QuickWriter extends Writer {
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see java.io.Writer#write(java.lang.String)
 	 */
-	public final void write(String str) {
+	@Override
+  public final void write(final String str) {
 		if (str != null) {
-			int len = str.length();
+			final int len = str.length();
 			if (len != 0) {
-				int newLength = length + len;
+				final int newLength = length + len;
 				if (newLength > buffer.length) {
 					expandBuffer(newLength);
 				}
@@ -155,11 +160,12 @@ public final class QuickWriter extends Writer {
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see java.io.Writer#write(char[])
 	 */
-	public final void write(char[] chars) {
-		int newLength = length + chars.length;
+	@Override
+  public final void write(final char[] chars) {
+		final int newLength = length + chars.length;
 		if (newLength > buffer.length) {
 			expandBuffer(newLength);
 		}
@@ -169,11 +175,11 @@ public final class QuickWriter extends Writer {
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see java.io.Writer#write(char[])
 	 */
-	public final void write(QuickWriter writer) {
-		int newLength = length + writer.length;
+	public final void write(final QuickWriter writer) {
+		final int newLength = length + writer.length;
 		if (newLength > buffer.length) {
 			expandBuffer(newLength);
 		}
@@ -183,11 +189,12 @@ public final class QuickWriter extends Writer {
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see java.io.Writer#write(int)
 	 */
-	public final void write(int character) {
-		int newLength = length + 1;
+	@Override
+  public final void write(final int character) {
+		final int newLength = length + 1;
 		if (newLength > buffer.length) {
 			expandBuffer(newLength);
 		}
@@ -196,11 +203,12 @@ public final class QuickWriter extends Writer {
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see java.io.Writer#write(java.lang.String, int, int)
 	 */
-	public final void write(String str, int off, int len) {
-		int newLength = length + len;
+	@Override
+  public final void write(final String str, final int off, final int len) {
+		final int newLength = length + len;
 		if (newLength > buffer.length) {
 			expandBuffer(newLength);
 		}
@@ -210,12 +218,12 @@ public final class QuickWriter extends Writer {
 
 	/**
 	 * Writes characters.
-	 * 
+	 *
 	 * @param c
 	 * @param repeats
 	 */
-	public final void write(char c, int repeats) {
-		int newLength = length + repeats;
+	private final void write(final char c, final int repeats) {
+		final int newLength = length + repeats;
 		if (newLength > buffer.length) {
 			expandBuffer(newLength);
 		}
@@ -227,11 +235,12 @@ public final class QuickWriter extends Writer {
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see java.lang.Appendable#append(char)
 	 */
-	public final Writer append(char c) {
-		int newLength = length + 1;
+	@Override
+  public final Writer append(final char c) {
+		final int newLength = length + 1;
 		if (newLength > buffer.length) {
 			expandBuffer(newLength);
 		}

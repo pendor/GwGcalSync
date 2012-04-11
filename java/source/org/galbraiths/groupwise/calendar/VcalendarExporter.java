@@ -7,8 +7,8 @@ import java.util.List;
 import org.galbraiths.groupwise.util.StringUtils;
 
 
-public class VcalendarExporter {
-  public static CharSequence getVcalendar(final List<CalendarEvent> calendarEvents) {
+class VcalendarExporter {
+  protected static CharSequence getVcalendar(final List<CalendarEvent> calendarEvents) {
     final DateFormat fullDate = new SimpleDateFormat("yyyyMMdd'T'HHmm'00'");
 
     final StringBuffer sb = new StringBuffer();

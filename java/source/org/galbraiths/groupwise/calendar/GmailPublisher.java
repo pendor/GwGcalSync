@@ -16,7 +16,7 @@ import org.gcaldaemon.core.Configurator;
  *
  * @author zbedell
  */
-public class GmailPublisher {
+class GmailPublisher {
   private static Log logger = LogFactory.getLog(GmailPublisher.class);
 
   private final String m_username;
@@ -26,10 +26,6 @@ public class GmailPublisher {
 
   private final RemoteCalendar m_cal;
   private final SyncEngine m_engine;
-
-  public GmailPublisher(final String p_username, final String p_password, final String p_calName) throws IOException {
-    this(p_username, p_password, p_calName, null, -1);
-  }
 
   public GmailPublisher(final String p_username, final String p_password, final String p_calName, final String p_proxyHost, final int p_proxyPort) throws IOException {
     m_username = p_username;

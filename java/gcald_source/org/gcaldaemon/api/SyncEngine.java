@@ -156,7 +156,7 @@ public final class SyncEngine {
 	 *             unable to open or create the specified working directory
 	 *             (file permission problem)
 	 */
-	public SyncEngine(final File p_workDir) throws FileNotFoundException {
+	private SyncEngine(final File p_workDir) throws FileNotFoundException {
 	  File workDir = p_workDir;
 		// Init working directory
 		if (workDir == null) {
@@ -181,10 +181,8 @@ public final class SyncEngine {
 		m_properties.put(Configurator.CACHE_TIMEOUT, "180000");
 		m_properties.put(Configurator.HTTP_ENABLED, "false");
 		m_properties.put(Configurator.PROGRESS_ENABLED, "false");
-		m_properties.put(Configurator.SEND_INVITATIONS, "false");
 		m_properties.put(Configurator.ICAL_BACKUP_TIMEOUT, "604800000");
-		m_properties.put(Configurator.EXTENDED_SYNC_ENABLED, "true");
-		m_properties.put(Configurator.REMOTE_ALARM_TYPES, "email,sms,popup");
+		m_properties.put(Configurator.REMOTE_ALARM_TYPES, "popup");//email,sms,
 
 		// Set default engine properties (RSS/ATOM feed converter)
 //		try {
@@ -263,11 +261,7 @@ public final class SyncEngine {
 		// Create (or reinitialize) the cached instance
 		if (m_configChanged) {
 			m_configChanged = false;
-			if (m_configurator != null) {
-				m_configurator.interrupt();
-			}
-			m_configurator = new Configurator(null, m_properties, false,
-					Configurator.MODE_EMBEDDED);
+			m_configurator = new Configurator(null, m_properties, false);
 		}
 
 		// Create request container
@@ -285,62 +279,9 @@ public final class SyncEngine {
 		for (int i = 0; i < paths.length; i++) {
 			path = paths[i];
 			url = new URL(GOOGLE_HTTPS_URL + path);
-			array[i] = new RemoteCalendar(GCalUtilities.getCalendarName(path,
-					m_workDir), url);
+			array[i] = new RemoteCalendar(GCalUtilities.getCalendarName(path, m_workDir), url);
 		}
 		return array;
-	}
-
-	// --- GOOGLE CALENDAR LOADER / FEED CONVERTER ---
-
-	/**
-	 * Downloads a specified RSS/ATOM feed and converts it to iCalendar (ICS)
-	 * format (or gets from the calendar cache).
-	 *
-	 * @param feedURL
-	 *            RSS/ATOM feed's URL (eg.
-	 *            "http://newsrss.bbc.co.uk/rss/newsonline_uk_edition/sci/tech/rss.xml")
-	 *
-	 * @return the converted content of the feed in iCalendar format
-	 *
-	 * @throws Exception
-	 *             any exception (eg. i/o, invalid param, etc)
-	 *
-	 * @see #getCacheTimeout
-	 * @see #setCacheTimeout
-	 */
-	public final byte[] loadCalendar(final URL feedURL) throws Exception {
-		return synchronize((byte[]) null, feedURL, null, null);
-	}
-
-	/**
-	 * Downloads a specified Google Calendar (with ToDo entries) in iCalendar
-	 * (ICS) format, or gets from the calendar cache).
-	 *
-	 * @param remoteCalendar
-	 *            Google Calendar's private ICAL URL
-	 *            ("https://www.google.com/calendar/ical/.../basic.ics"), or the
-	 *            RSS/ATOM feed's URL (= feed converter mode)
-	 * @param username
-	 *            full name of the user (eg. "username@gmail.com" or
-	 *            "username@mydomain.org"), this value is optional in feed
-	 *            converter mode
-	 * @param password
-	 *            Gmail password (in unencrypted, plain text format), this value
-	 *            is optional in feed converter mode
-	 *
-	 * @return the new, synchronized content of the calendar in iCalendar format
-	 *
-	 * @throws Exception
-	 *             any exception (eg. i/o, invalid param, invalid calendar
-	 *             syntax, etc)
-	 *
-	 * @see #getCacheTimeout
-	 * @see #setCacheTimeout
-	 */
-	public final byte[] loadCalendar(final URL remoteCalendar, final String username,
-			final String password) throws Exception {
-		return synchronize((byte[]) null, remoteCalendar, username, password);
 	}
 
 	// --- MAIN SYNCHRONIZER / FEED CONVERTER METHODS ---
@@ -383,24 +324,17 @@ public final class SyncEngine {
 		if (remoteCalendar == null) {
 			throw new NullPointerException("remoteCalendar = null");
 		}
-		String path = remoteCalendar.getPath();
-		if (path.endsWith(".ics")) {
+		final String path = remoteCalendar.getPath();
 
-			// Synchronizer mode
-			if (username == null || username.length() == 0) {
-				throw new NullPointerException("username = null");
-			}
-			if (username.indexOf('@') == -1) {
-				throw new IllegalArgumentException("invalid username");
-			}
-			if (password == null || password.length() == 0) {
-				throw new NullPointerException("password = null");
-			}
-		} else {
-
-			// Feed converter mode
-			checkFeedConverter();
-			path = remoteCalendar.toString();
+		// Synchronizer mode
+		if (username == null || username.length() == 0) {
+			throw new NullPointerException("username = null");
+		}
+		if (username.indexOf('@') == -1) {
+			throw new IllegalArgumentException("invalid username");
+		}
+		if (password == null || password.length() == 0) {
+			throw new NullPointerException("password = null");
 		}
 
 		// Load local calendar file
@@ -421,8 +355,7 @@ public final class SyncEngine {
 		// Create (or reinitialize) the cached instance
 		if (m_configChanged) {
 			m_configChanged = false;
-			m_configurator = new Configurator(null, m_properties, false,
-					Configurator.MODE_EMBEDDED);
+			m_configurator = new Configurator(null, m_properties, false);
 		}
 
 		// Create request container
@@ -455,88 +388,6 @@ public final class SyncEngine {
 		}
 	}
 
-	/**
-	 * Synchronizes a remote Google Calendar to a local iCalendar specified as
-	 * an iCalendar (ICS) byte array. Creates daily backups of all Google
-	 * Calendars into the 'backup' subdirectory (under the working directory).
-	 *
-	 * @param localCalendar
-	 *            bytes of the local calendar in iCalendar format (or null =
-	 *            downloads calendar without any synchronization, or returns
-	 *            from the calendar cache)
-	 * @param remoteCalendar
-	 *            Google Calendar's private ICAL URL
-	 *            ("https://www.google.com/calendar/ical/.../basic.ics"), or the
-	 *            RSS/ATOM feed's URL (= feed converter mode)
-	 * @param username
-	 *            full name of the user (eg. "username@gmail.com" or
-	 *            "username@mydomain.org"), this value is optional in feed
-	 *            converter mode
-	 * @param password
-	 *            Gmail password (in unencrypted, plain text format), this value
-	 *            is optional in feed converter mode
-	 *
-	 * @return the new, synchronized content of the calendar, in iCalendar
-	 *         format
-	 *
-	 * @throws Exception
-	 *             any exception (eg. i/o, invalid param, invalid calendar
-	 *             syntax, etc)
-	 *
-	 * @see #getCacheTimeout
-	 * @see #setCacheTimeout
-	 */
-	public final byte[] synchronize(final byte[] localCalendar, final URL remoteCalendar,
-			final String username, final String password) throws Exception {
-
-		// Verify required parameters
-		if (remoteCalendar == null) {
-			throw new NullPointerException("remoteCalendar = null");
-		}
-		String path = remoteCalendar.getPath();
-		if (path.endsWith(".ics")) {
-
-			// Synchronizer mode
-			if (username == null || username.length() == 0) {
-				throw new NullPointerException("username = null");
-			}
-			if (username.indexOf('@') == -1) {
-				throw new IllegalArgumentException("invalid username");
-			}
-			if (password == null || password.length() == 0) {
-				throw new NullPointerException("password = null");
-			}
-		} else {
-
-			// Feed converter mode
-			checkFeedConverter();
-			path = remoteCalendar.toString();
-		}
-
-		// Create (or reinitialize) the cached instance
-		if (m_configChanged) {
-			m_configChanged = false;
-			m_configurator = new Configurator(null, m_properties, false,
-					Configurator.MODE_EMBEDDED);
-		}
-
-		// Create request container
-		final Request request = new Request();
-		request.body = localCalendar;
-		request.url = path;
-		request.username = username;
-		request.password = password;
-
-		// Do synchronization (if the 'localCalendar' is defined)
-		if (localCalendar != null && localCalendar.length != 0) {
-			m_configurator.synchronizeNow(request);
-		}
-
-		// Return the modified calendar (with ToDo entries)
-		final CachedCalendar calendar = m_configurator.getCalendar(request);
-		return calendar.toByteArray();
-	}
-
 	// --- PRIVATE PROPERTY GETTERS/SETTERS ---
 
 	/**
@@ -548,7 +399,6 @@ public final class SyncEngine {
 	 *            value of the config property
 	 */
 	public final void setConfigProperty(final String key, final String value) {
-
 		// Compare to the previous value
 		final String previous = m_properties.getProperty(key, "");
 		if (previous.equals(value)) {
@@ -558,20 +408,6 @@ public final class SyncEngine {
 		// Set new value
 		m_properties.setProperty(key, value);
 		m_configChanged = true;
-	}
-
-	/**
-	 * Puts a boolean property into the engine's configuration.
-	 *
-	 * @param key
-	 *            name of the config property
-	 * @param value
-	 *            value of the config property
-	 *
-	 * @see #setConfigProperty
-	 */
-	private final void setConfigProperty(final String key, final boolean value) {
-		setConfigProperty(key, Boolean.toString(value));
 	}
 
 	/**
@@ -739,62 +575,6 @@ public final class SyncEngine {
 	}
 
 	/**
-	 * Returns the value of the 'progress.enabled' property (= show animated
-	 * progress bar while synching). The default value is 'false'.
-	 *
-	 * @return true or false (true = enabled)
-	 *
-	 * @see #setProgressEnabled
-	 * @see #getConfigProperty
-	 */
-	public final boolean getProgressEnabled() {
-		return getConfigProperty(Configurator.PROGRESS_ENABLED, false);
-	}
-
-	/**
-	 * Sets the value of the 'progress.enabled' property (= show animated
-	 * progress bar while synching). The default value is 'false'.
-	 *
-	 * @param enable
-	 *            true or false (true = enabled)
-	 *
-	 * @see #getProgressEnabled
-	 * @see #setConfigProperty
-	 */
-	public final void setProgressEnabled(final boolean enable) {
-		setConfigProperty(Configurator.PROGRESS_ENABLED, enable);
-	}
-
-	/**
-	 * Returns the value of the 'send.invitations' property (= Google Calendar
-	 * send an email to the attendees to invite them to attend). The default
-	 * value is 'false'.
-	 *
-	 * @return true or false (true = enabled)
-	 *
-	 * @see #setSendInvitations
-	 * @see #getConfigProperty
-	 */
-	public final boolean getSendInvitations() {
-		return getConfigProperty(Configurator.SEND_INVITATIONS, false);
-	}
-
-	/**
-	 * Sets the value of the 'send.invitations' property (= Google Calendar send
-	 * an email to the attendees to invite them to attend). The default value is
-	 * 'false'.
-	 *
-	 * @param enable
-	 *            true or false (true = enabled)
-	 *
-	 * @see #getSendInvitations
-	 * @see #setConfigProperty
-	 */
-	public final void setSendInvitations(final boolean enable) {
-		setConfigProperty(Configurator.SEND_INVITATIONS, enable);
-	}
-
-	/**
 	 * Returns the value of the 'ical.backup.timeout' property (= backup file
 	 * timeout in the working directory). Default is 604800000 = one week, 0 =
 	 * disable backups.
@@ -826,35 +606,6 @@ public final class SyncEngine {
 			throw new IllegalArgumentException("ical.backup.timeout < 1 day");
 		}
 		setConfigProperty(Configurator.ICAL_BACKUP_TIMEOUT, millis);
-	}
-
-	/**
-	 * Returns the value of the 'extended.sync.enabled' property (= enable to
-	 * sync alarms, categories, urls, priorities = full synchronization). The
-	 * default value is 'true'.
-	 *
-	 * @return true or false (true = enabled)
-	 *
-	 * @see #setExtendedSyncEnabled
-	 * @see #getConfigProperty
-	 */
-	public final boolean getExtendedSyncEnabled() {
-		return getConfigProperty(Configurator.EXTENDED_SYNC_ENABLED, true);
-	}
-
-	/**
-	 * Sets the value of the 'extended.sync.enabled' property (= enable to sync
-	 * alarms, categories, urls, priorities = full synchronization). The default
-	 * value is 'true'.
-	 *
-	 * @param enable
-	 *            true or false (true = enabled)
-	 *
-	 * @see #getExtendedSyncEnabled
-	 * @see #setConfigProperty
-	 */
-	public final void setExtendedSyncEnabled(final boolean enable) {
-		setConfigProperty(Configurator.EXTENDED_SYNC_ENABLED, enable);
 	}
 
 	/**

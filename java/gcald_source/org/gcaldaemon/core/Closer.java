@@ -1,4 +1,4 @@
-package org.galbraiths.groupwise.util;
+package org.gcaldaemon.core;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -8,7 +8,7 @@ import java.io.IOException;
  *
  * @author zbedell
  */
-public final class Closer {
+final class Closer {
 
   public static void close(final Closeable... p_cl) {
     if(p_cl != null) {

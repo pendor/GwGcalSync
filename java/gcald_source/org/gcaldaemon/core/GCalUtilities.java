@@ -6,7 +6,7 @@
 // Apache License
 // Version 2.0, January 2004
 // http://www.apache.org/licenses/
-// 
+//
 // Project home:
 // http://gcaldaemon.sourceforge.net
 //
@@ -60,13 +60,10 @@ import net.fortuna.ical4j.model.property.Uid;
 import net.fortuna.ical4j.model.property.Url;
 import net.fortuna.ical4j.model.property.Version;
 
-import org.apache.commons.httpclient.Credentials;
+import org.apache.commons.httpclient.HostConfiguration;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.MultiThreadedHttpConnectionManager;
-import org.apache.commons.httpclient.UsernamePasswordCredentials;
-import org.apache.commons.httpclient.auth.AuthScope;
 import org.apache.commons.httpclient.methods.GetMethod;
-import org.apache.commons.httpclient.params.HttpConnectionManagerParams;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.gcaldaemon.logger.QuickWriter;
@@ -95,30 +92,27 @@ import com.google.gdata.data.extensions.Reminder;
 import com.google.gdata.data.extensions.When;
 import com.google.gdata.data.extensions.Where;
 import com.google.gdata.data.extensions.Who.AttendeeStatus;
-import com.google.gdata.util.ResourceNotFoundException;
 import com.google.gdata.util.ServiceException;
 
 /**
  * Google Calendar utilities.
- * 
+ *
  * <li>loadCalendar
  * <li>updateEvents
  * <li>removeEvents
- * 
+ *
  * Created: Jan 03, 2007 12:50:56 PM
- * 
+ *
  * @author Andras Berkes
  */
 public final class GCalUtilities {
 
 	// --- CONSTANTS ---
 
-	public static final String ERROR_MARKER = "gcaldaemon-error";
+	protected static final String ERROR_MARKER = "gcaldaemon-error";
 
 	private static final long GOOGLE_CONNECTION_TIMEOUT = 1000L * 60 * 5;
 	private static final long GOOGLE_RETRY_MILLIS = 1000L;
-	private static final int HTTP_CONNECTION_TIMEOUT = 10000;
-	private static final int HTTP_WAIT_TIMEOUT = 60000;
 
 	private static final int MAX_POOLED_CONNECTIONS = 100;
 	private static final int MAX_FEED_ENTRIES = 10000;
@@ -160,77 +154,34 @@ public final class GCalUtilities {
 
 	// --- GLOBAL PROPERTIES ---
 
-	private static boolean enableExtensions;
-	private static boolean sendInvitations;
 	private static boolean enableEmail;
 	private static boolean enableSms;
 	private static boolean enablePopup;
 
 	// --- HTTP CONNECTION HANDLER ---
 
-	private static final MultiThreadedHttpConnectionManager connectionManager = new MultiThreadedHttpConnectionManager();
-	private static final HttpClient httpClient = new HttpClient(
-			connectionManager);
+	private static MultiThreadedHttpConnectionManager connectionManager;
+	private static HttpClient httpClient;
 
-	static final void globalInit() {
-		try {
-
-			// Set extended sync mode
-			String value = System.getProperty("gcaldaemon.extended.sync",
-					"false");
-			enableExtensions = "true".equals(value);
-
-			// Set send invitations
-			value = System.getProperty("gcaldaemon.send.invitations", "false");
-			sendInvitations = "true".equals(value);
-
-			// Set enabled alarm types in the Google Calendar
-			value = System.getProperty("gcaldaemon.remote.alarms",
-					"email,sms,popup");
-			boolean email = value.indexOf("mail") != -1;
-			boolean sms = value.indexOf("sms") != -1;
-			boolean popup = value.indexOf("pop") != -1;
-			if (!email && !sms && !popup) {
-				enableEmail = true;
-				enableSms = true;
-				enablePopup = true;
-			} else {
-				enableEmail = email;
-				enableSms = sms;
-				enablePopup = popup;
-			}
-
-			// Set proxy
-			HttpConnectionManagerParams params = connectionManager.getParams();
-			params.setConnectionTimeout(HTTP_CONNECTION_TIMEOUT);
-			params.setSoTimeout(HTTP_WAIT_TIMEOUT);
-			String proxyHost = System.getProperty("http.proxyHost");
-			String proxyPort = System.getProperty("http.proxyPort");
-			if (proxyHost != null && proxyPort != null) {
-				httpClient.getHostConfiguration().setProxy(proxyHost,
-						Integer.parseInt(proxyPort));
-				String username = System.getProperty("http.proxyUserName");
-				String password = System.getProperty("http.proxyPassword");
-				if (username != null && password != null) {
-					Credentials credentials = new UsernamePasswordCredentials(
-							username, password);
-					httpClient.getState().setProxyCredentials(AuthScope.ANY,
-							credentials);
-				}
-			}
-		} catch (Exception setupError) {
-			log.warn("Unable to init proxy!", setupError);
-		}
-	}
 
 	// --- PRIVATE CONSTRUCTOR ---
+
+	static void initHttpClient(final String p_proxyHost, final int p_proxyPort) {
+	  connectionManager = new MultiThreadedHttpConnectionManager();
+    httpClient = new HttpClient(connectionManager);
+
+    if(p_proxyHost != null && p_proxyHost.trim().length() > 0) {
+      final HostConfiguration conf = httpClient.getHostConfiguration();
+      conf.setProxy(p_proxyHost, p_proxyPort);
+    }
+	}
 
 	private GCalUtilities() {
 	}
 
 	// --- GOOGLE ICALENDAR LOADER ---
 
-	static final byte[] loadCalendar(Request request) throws Exception {
+	static final byte[] loadCalendar(final Request request) throws Exception {
 		GetMethod get = null;
 		String icalURL;
 
@@ -238,7 +189,7 @@ public final class GCalUtilities {
 		String token = null;
 		if (request.url.indexOf("/private-") == -1 && request.username != null
 				&& request.password != null) {
-			CalendarService service = new CalendarService(Configurator.VERSION
+			final CalendarService service = new CalendarService(Configurator.VERSION
 					.replace(' ', '-'));
 			token = service.getAuthToken(request.username, request.password,
 					null, null, CalendarService.CALENDAR_SERVICE,
@@ -255,7 +206,7 @@ public final class GCalUtilities {
 				} else {
 					icalURL = GOOGLE_HTTP_URL + request.url;
 				}
-				int i = icalURL.indexOf("basic.ics");
+				final int i = icalURL.indexOf("basic.ics");
 				if (i != -1) {
 					icalURL = icalURL.substring(0, i + 9);
 				}
@@ -271,7 +222,7 @@ public final class GCalUtilities {
 
 				// Load iCal file from Google
 				log.debug("Loading calendar from " + icalURL + "...");
-				int status = httpClient.executeMethod(get);
+				final int status = httpClient.executeMethod(get);
 				if (status == -1) {
 					throw new Exception("Invalid HTTP response status (-1)!");
 				}
@@ -279,13 +230,8 @@ public final class GCalUtilities {
 
 				// Validate content
 				String content;
-				if (enableExtensions) {
 					content = StringUtils.decodeToString(bytes,
 							StringUtils.UTF_8);
-				} else {
-					content = StringUtils.decodeToString(bytes,
-							StringUtils.US_ASCII);
-				}
 				if (content.indexOf("BEGIN:VCALENDAR") == -1) {
 					log.warn("Received file from Google:\r\n" + content);
 					throw new Exception("Invalid iCal file: " + icalURL);
@@ -295,9 +241,7 @@ public final class GCalUtilities {
 				registerTimeZones(content, bytes);
 
 				// Insert extended properties
-				if (enableExtensions) {
-					bytes = insertExtensions(request, content, bytes);
-				}
+				bytes = insertExtensions(request, content, bytes);
 
 				// Cleanup cache
 				editURLMaps.remove(request.url);
@@ -307,10 +251,10 @@ public final class GCalUtilities {
 
 				// Return ICS calendar file
 				return bytes;
-			} catch (UnknownHostException networkDown) {
+			} catch (final UnknownHostException networkDown) {
 				log.debug("Network down!");
 				return exceptionToCalendar(networkDown);
-			} catch (Exception loadError) {
+			} catch (final Exception loadError) {
 				if (tries == 5) {
 					log.error("Unable to load calendar!", loadError);
 					return exceptionToCalendar(loadError);
@@ -325,12 +269,12 @@ public final class GCalUtilities {
 		}
 	}
 
-	private static final byte[] exceptionToCalendar(Exception loadError)
+	private static final byte[] exceptionToCalendar(final Exception loadError)
 			throws Exception {
 
 		// Create new calendar
-		Calendar calendar = new Calendar();
-		PropertyList props = calendar.getProperties();
+		final Calendar calendar = new Calendar();
+		final PropertyList props = calendar.getProperties();
 		props.add(new ProdId(ERROR_MARKER));
 		props.add(Version.VERSION_2_0);
 		props.add(CalScale.GREGORIAN);
@@ -348,72 +292,72 @@ public final class GCalUtilities {
 			content = "Service unavailable!\r\n"
 					+ "Please do not modify this calendar!";
 		}
-		long eventStart = System.currentTimeMillis();
-		long eventEnd = eventStart + 2700000L;
-		VEvent event = new VEvent(new net.fortuna.ical4j.model.DateTime(
+		final long eventStart = System.currentTimeMillis();
+		final long eventEnd = eventStart + 2700000L;
+		final VEvent event = new VEvent(new net.fortuna.ical4j.model.DateTime(
 				eventStart), new net.fortuna.ical4j.model.DateTime(eventEnd),
 				title);
 
 		// Generate UID by start millis
-		PropertyList args = event.getProperties();
-		Uid uid = new Uid(ERROR_MARKER);
+		final PropertyList args = event.getProperties();
+		final Uid uid = new Uid(ERROR_MARKER);
 		args.add(uid);
 
 		// Create description
 		if (loadError != null) {
-			String message = loadError.getMessage();
+			final String message = loadError.getMessage();
 			if (message != null && message.length() != 0) {
 				content = content + "\r\n[cause: " + message + ']';
 			}
 		}
-		Description desc = new Description(content);
+		final Description desc = new Description(content);
 		args.add(desc);
 
 		// Add marker event to calendar
-		ComponentList events = calendar.getComponents();
+		final ComponentList events = calendar.getComponents();
 		events.add(event);
 
 		// Get calendar bytes
-		ByteArrayOutputStream buffer = new ByteArrayOutputStream(1024);
-		CalendarOutputter outputter = new CalendarOutputter();
+		final ByteArrayOutputStream buffer = new ByteArrayOutputStream(1024);
+		final CalendarOutputter outputter = new CalendarOutputter();
 		outputter.output(calendar, buffer);
 		return buffer.toByteArray();
 	}
 
 	// --- ICAL CONVERTER ---
 
-	private static final byte[] insertExtensions(Request request,
-			String content, byte[] bytes) {
+	private static final byte[] insertExtensions(final Request request,
+			final String content, byte[] bytes) {
 		try {
 
 			// Create calendar's private feed URL
-			URL feedURL = getFeedURL(request);
+			final URL feedURL = getFeedURL(request);
 
 			// Get service from pool
-			CalendarService service = getService(request);
+			final CalendarService service = getService(request);
 
 			// Build edit map
-			CachedCalendar calendar = new CachedCalendar();
+			final CachedCalendar calendar = new CachedCalendar();
 			calendar.url = request.url;
 			calendar.username = request.username;
 			calendar.password = request.password;
 			calendar.previousBody = bytes;
-			HashMap extensions = createEditURLMap(service, calendar, feedURL);
+			final HashMap extensions = createEditURLMap(service, calendar, feedURL);
 			if (extensions == null || extensions.isEmpty()) {
 				return bytes;
 			}
 
 			// Last ack
-			boolean containsValarm = content.indexOf("BEGIN:VALARM") != -1;
-			long lastAck = System.currentTimeMillis() - LAST_ACK_TIMEOUT;
-			net.fortuna.ical4j.model.DateTime now = new net.fortuna.ical4j.model.DateTime(
+			final boolean containsValarm = content.indexOf("BEGIN:VALARM") != -1;
+			final long lastAck = System.currentTimeMillis() - LAST_ACK_TIMEOUT;
+			final net.fortuna.ical4j.model.DateTime now = new net.fortuna.ical4j.model.DateTime(
 					lastAck);
 			now.setUtc(true);
-			char[] ack = now.toString().toCharArray();
+			final char[] ack = now.toString().toCharArray();
 
 			// Insert extensions
-			StringTokenizer st = new StringTokenizer(content, "\r\n");
-			QuickWriter writer = new QuickWriter(bytes.length * 2);
+			final StringTokenizer st = new StringTokenizer(content, "\r\n");
+			final QuickWriter writer = new QuickWriter(bytes.length * 2);
 			String extension, line, id = null;
 			int days, hours, mins, i;
 			Reminder reminder;
@@ -441,13 +385,13 @@ public final class GCalUtilities {
 					i = line.lastIndexOf(':');
 					if (i != -1) {
 						try {
-							RecurrenceId recurrenceId = new RecurrenceId(line
+							final RecurrenceId recurrenceId = new RecurrenceId(line
 									.substring(i + 1));
-							Date date = recurrenceId.getDate();
+							final Date date = recurrenceId.getDate();
 							if (date != null) {
 								id = id + '!' + date.getTime();
 							}
-						} catch (Exception ignored) {
+						} catch (final Exception ignored) {
 							log.warn(ignored);
 						}
 					}
@@ -555,7 +499,7 @@ public final class GCalUtilities {
 			// Encode extended ics file
 			bytes = StringUtils.encodeArray(writer.getChars(),
 					StringUtils.UTF_8);
-		} catch (Exception ignored) {
+		} catch (final Exception ignored) {
 			log.debug("Unable to insert extensions!", ignored);
 		}
 		return bytes;
@@ -565,10 +509,10 @@ public final class GCalUtilities {
 
 	private static final HashSet registeredTimeZones = new HashSet();
 
-	private static final void registerTimeZones(String content, byte[] bytes) {
+	private static final void registerTimeZones(final String content, final byte[] bytes) {
 		try {
-			StringTokenizer st = new StringTokenizer(content, "\r\n");
-			HashSet timeZones = new HashSet();
+			final StringTokenizer st = new StringTokenizer(content, "\r\n");
+			final HashSet timeZones = new HashSet();
 			String line, timeZone;
 			while (st.hasMoreTokens()) {
 				line = st.nextToken();
@@ -587,8 +531,8 @@ public final class GCalUtilities {
 			if (timeZones.isEmpty()) {
 				return;
 			}
-			Calendar calendar = ICalUtilities.parseCalendar(bytes);
-			VTimeZone[] zones = ICalUtilities.getTimeZones(calendar);
+			final Calendar calendar = ICalUtilities.parseCalendar(bytes);
+			final VTimeZone[] zones = ICalUtilities.getTimeZones(calendar);
 			if (zones.length == 0) {
 				return;
 			}
@@ -596,8 +540,8 @@ public final class GCalUtilities {
 			TzOffsetTo offsetTo;
 			String id, offset;
 			VTimeZone zone;
-			for (int i = 0; i < zones.length; i++) {
-				zone = zones[i];
+			for(final VTimeZone zone2 : zones) {
+				zone = zone2;
 				seasonalTime = zone.getObservances().getComponent(
 						Observance.STANDARD);
 				if (seasonalTime == null) {
@@ -623,78 +567,21 @@ public final class GCalUtilities {
 					log.warn("Unknown time zone (" + id + ")!");
 				}
 			}
-		} catch (Exception ignored) {
+		} catch (final Exception ignored) {
 			log.debug(ignored);
 		}
 	}
 
-	// --- EVENT FINDER ---
-
-	static final CalendarEventEntry findEvent(CachedCalendar calendar,
-			VEvent event) throws Exception {
-
-		// Create calendar's private feed URL
-		URL feedURL = getFeedURL(calendar);
-
-		// Get service from pool
-		CalendarService service = getService(calendar);
-
-		// Find remote event
-		try {
-			return getGoogleEntry(service, calendar, feedURL, event);
-		} catch (ServiceException invalidEntry) {
-
-			// Remap events
-			editURLMaps.remove(calendar.url);
-			uidMaps.remove(calendar.url);
-			return getGoogleEntry(service, calendar, feedURL, event);
-		}
-	}
-
-	// --- EVENT CREATOR ---
-
-	static final void insertEvents(CachedCalendar calendar,
-			VTimeZone[] timeZones, VEvent[] events) throws Exception {
-
-		// Create calendar's private feed URL
-		URL feedURL = getFeedURL(calendar);
-
-		// Get service from pool
-		CalendarService service = getService(calendar);
-
-		// Find RRule
-		boolean foundRRule = false;
-		int n;
-		for (n = 0; n < events.length; n++) {
-			foundRRule = events[n].getProperty(Property.RRULE) != null;
-			if (foundRRule) {
-				break;
-			}
-		}
-
-		// Loop on events
-		for (n = 0; n < events.length; n++) {
-
-			// Insert event
-			insertEvent(calendar, timeZones, events[n], foundRRule, service,
-					feedURL);
-		}
-
-		// Clear cache
-		editURLMaps.remove(calendar.url);
-		uidMaps.remove(calendar.url);
-	}
-
 	private static final void insertEvent(CachedCalendar calendar,
-			VTimeZone[] timeZones, VEvent event, boolean foundRRule,
-			CalendarService service, URL feedURL) throws Exception {
+			final VTimeZone[] timeZones, final VEvent event, boolean foundRRule,
+			final CalendarService service, final URL feedURL) throws Exception {
 
 		// Clear cache
 		if (foundRRule && event.getRecurrenceId() != null) {
 			foundRRule = false;
 			editURLMaps.remove(calendar.url);
 			uidMaps.remove(calendar.url);
-			CachedCalendar swap = new CachedCalendar();
+			final CachedCalendar swap = new CachedCalendar();
 			swap.lastModified = calendar.lastModified;
 			swap.url = calendar.url;
 			swap.username = calendar.username;
@@ -707,13 +594,13 @@ public final class GCalUtilities {
 		}
 
 		// Convert event to Google entry
-		CalendarEventEntry newEntry = convertVEvent(calendar, timeZones, event);
+		final CalendarEventEntry newEntry = convertVEvent(calendar, timeZones, event);
 
 		// Absolute time = clear reminders mark
-		List reminders = newEntry.getReminder();
+		final List reminders = newEntry.getReminder();
 		if (reminders != null && !reminders.isEmpty()) {
-			Reminder reminder = (Reminder) reminders.get(0);
-			DateTime absolute = reminder.getAbsoluteTime();
+			final Reminder reminder = (Reminder) reminders.get(0);
+			final DateTime absolute = reminder.getAbsoluteTime();
 			if (absolute != null) {
 				reminders.clear();
 			}
@@ -726,10 +613,10 @@ public final class GCalUtilities {
 		}
 		try {
 			service.insert(feedURL, newEntry);
-		} catch (Exception exception) {
+		} catch (final Exception exception) {
 
 			// Get remote message
-			String msg = getMessageBody(exception);
+			final String msg = getMessageBody(exception);
 
 			// Skip insert
 			if (msg.indexOf("no instances") != -1
@@ -741,7 +628,7 @@ public final class GCalUtilities {
 
 			// Remove reminders
 			if (msg.indexOf("many reminder") != -1) {
-				List reminder = newEntry.getReminder();
+				final List reminder = newEntry.getReminder();
 				log.warn("Too many reminders!");
 				if (reminder != null) {
 					reminder.clear();
@@ -752,14 +639,14 @@ public final class GCalUtilities {
 			Thread.sleep(GOOGLE_RETRY_MILLIS);
 			try {
 				service.insert(feedURL, newEntry);
-			} catch (Exception error) {
+			} catch (final Exception error) {
 				log.warn("Unable to insert event ("
 						+ ICalUtilities.getEventTitle(event) + ")!\r\n" + msg);
 			}
 		}
 	}
 
-	private static final String getMessageBody(Exception exception) {
+	private static final String getMessageBody(final Exception exception) {
 		if (exception == null) {
 			return "";
 		}
@@ -773,247 +660,7 @@ public final class GCalUtilities {
 		return body;
 	}
 
-	// --- EVENT UPDATER ---
-
-	static final void updateEvents(CachedCalendar calendar,
-			VTimeZone[] timeZones, VEvent[] events) throws Exception {
-
-		// Create calendar's private feed URL
-		URL feedURL = getFeedURL(calendar);
-
-		// Get service from pool
-		CalendarService service = getService(calendar);
-
-		// Loop on events
-		boolean searchRRule = true;
-		boolean foundRRule = false;
-		VEvent event;
-		for (int n = 0; n < events.length; n++) {
-			event = events[n];
-
-			// Find original event
-			CalendarEventEntry oldEntry = getGoogleEntry(service, calendar,
-					feedURL, event);
-
-			if (oldEntry == null) {
-
-				// Find RRule
-				if (searchRRule) {
-					searchRRule = false;
-					for (int m = 0; m < events.length; m++) {
-						foundRRule = events[m].getProperty(Property.RRULE) != null;
-						if (foundRRule) {
-							break;
-						}
-					}
-				}
-
-				// Insert event
-				insertEvent(calendar, timeZones, event, foundRRule, service,
-						feedURL);
-
-				// Clear UID cache
-				editURLMaps.remove(calendar.url);
-				uidMaps.remove(calendar.url);
-			} else {
-
-				// Event found in Google Calendar
-				Link editLink = oldEntry.getEditLink();
-				if (editLink == null) {
-					log.warn("Unable to update read-only event ("
-							+ ICalUtilities.getEventTitle(event) + ")!");
-					continue;
-				}
-				String editURL = editLink.getHref();
-
-				// Convert event to Google entry
-				CalendarEventEntry newEntry = convertVEvent(calendar,
-						timeZones, event);
-
-				// Check recurrence
-				boolean recurrenceChanged;
-				Recurrence recurrence = null;
-				if (oldEntry.getRecurrence() == null) {
-					recurrence = newEntry.getRecurrence();
-					recurrenceChanged = recurrence != null;
-				} else {
-					recurrence = newEntry.getRecurrence();
-					recurrenceChanged = recurrence == null;
-				}
-
-				// Copy reminders
-				List reminders = newEntry.getReminder();
-				if (reminders.isEmpty()) {
-					if (!enableExtensions) {
-						List oldReminders = oldEntry.getReminder();
-						if (oldReminders != null && !oldReminders.isEmpty()) {
-							reminders.addAll(oldReminders);
-						}
-					}
-				} else {
-					Reminder reminder = (Reminder) reminders.get(0);
-					DateTime absolute = reminder.getAbsoluteTime();
-					if (absolute != null) {
-
-						// Absolute time = clear reminders mark
-						reminders.clear();
-					}
-				}
-
-				// Do modifications
-				if (recurrenceChanged) {
-					if (log.isDebugEnabled()) {
-						log.debug("Recreating event ("
-								+ ICalUtilities.getEventTitle(event)
-								+ ") in Google Calendar...");
-					}
-					boolean deleted = false;
-					try {
-
-						// Remove and recreate entry
-						editURLMaps.remove(calendar.url);
-						uidMaps.remove(calendar.url);
-						service.delete(new URL(editURL));
-						deleted = true;
-						service.insert(feedURL, newEntry);
-					} catch (ResourceNotFoundException notFound) {
-						log.warn("Event (" + ICalUtilities.getEventTitle(event)
-								+ ") not found in Google Calendar!");
-					} catch (Exception exception) {
-
-						// Get remote message
-						String msg = getMessageBody(exception);
-
-						// Skip insert
-						if (msg.indexOf("no instances") != -1
-								|| msg.indexOf("read-only") != -1) {
-							log.debug("Unable to recreate event ("
-									+ ICalUtilities.getEventTitle(event)
-									+ ")!\r\n" + msg);
-							continue;
-						}
-
-						// Remove reminders
-						if (msg.indexOf("many reminder") != -1) {
-							List reminder = newEntry.getReminder();
-							log.warn("Too many reminders!");
-							if (reminder != null) {
-								reminder.clear();
-							}
-						}
-
-						// Resend request
-						Thread.sleep(GOOGLE_RETRY_MILLIS);
-						try {
-							if (!deleted) {
-								service.delete(new URL(editURL));
-							}
-							service.insert(feedURL, newEntry);
-						} catch (Exception error) {
-							log.warn("Unable to recreate event ("
-									+ ICalUtilities.getEventTitle(event)
-									+ ")!\r\n" + msg);
-						}
-					}
-				} else {
-					if (log.isDebugEnabled()) {
-						log.debug("Updating event ("
-								+ ICalUtilities.getEventTitle(event)
-								+ ") in Google Calendar...");
-					}
-					try {
-
-						// Simple update
-						service.update(new URL(editURL), newEntry);
-					} catch (ResourceNotFoundException notFound) {
-						log.warn("Event (" + ICalUtilities.getEventTitle(event)
-								+ ") not found in Google Calendar!");
-					} catch (Exception exception) {
-
-						// Get remote message
-						String msg = getMessageBody(exception);
-
-						// Skip insert
-						if (msg.indexOf("cannot override") != -1
-								|| msg.indexOf("read-only") != -1) {
-							log.debug("Unable to update event ("
-									+ ICalUtilities.getEventTitle(event)
-									+ ")!\r\n" + msg);
-							continue;
-						}
-
-						// Delete event
-						if (msg.indexOf("no instances") != -1) {
-							try {
-								removeRecurringEvent(calendar, service, event,
-										editURL, feedURL);
-							} catch (Exception ignored) {
-								log.debug("Unable to delete faulty event ("
-										+ ICalUtilities.getEventTitle(event)
-										+ ")!", ignored);
-							}
-							continue;
-						}
-
-						// Remove reminders
-						if (msg.indexOf("many reminder") != -1) {
-							List reminder = newEntry.getReminder();
-							log.warn("Too many reminders!");
-							if (reminder != null) {
-								reminder.clear();
-							}
-						}
-
-						// Resend request
-						Thread.sleep(GOOGLE_RETRY_MILLIS);
-						try {
-							service.update(new URL(editURL), newEntry);
-						} catch (Exception error) {
-							log.warn("Unable to update event ("
-									+ ICalUtilities.getEventTitle(event)
-									+ ")!\r\n" + msg);
-						}
-					}
-				}
-			}
-		}
-	}
-
-	private static final void removeRecurringEvent(CachedCalendar calendar,
-			CalendarService service, VEvent parent, String editURL, URL feedURL)
-			throws Exception {
-		editURLMaps.remove(calendar.url);
-		uidMaps.remove(calendar.url);
-		VEvent[] events = ICalUtilities.getEvents(ICalUtilities
-				.parseCalendar(calendar.previousBody));
-		String uid = ICalUtilities.getUid(parent);
-		if (uid == null) {
-			return;
-		}
-		CalendarEventEntry oldEntry;
-		VEvent child;
-		String id;
-		for (int c = 0; c < events.length; c++) {
-			child = events[c];
-			id = ICalUtilities.getUid(child);
-			if (id == null) {
-				continue;
-			}
-			if (id.startsWith(uid) && !id.equals(uid)) {
-				oldEntry = getGoogleEntry(service, calendar, feedURL, child);
-				if (oldEntry != null) {
-					Thread.sleep(GOOGLE_RETRY_MILLIS);
-					service.delete(new URL(oldEntry.getEditLink().getHref()));
-				}
-			}
-		}
-		Thread.sleep(GOOGLE_RETRY_MILLIS);
-		service.delete(new URL(editURL));
-		editURLMaps.remove(calendar.url);
-		uidMaps.remove(calendar.url);
-	}
-
-	private static final URL getFeedURL(Request request) throws Exception {
+	private static final URL getFeedURL(final Request request) throws Exception {
 		String target = request.url;
 		int i = target.indexOf("/ical/");
 		if (i == -1) {
@@ -1031,103 +678,34 @@ public final class GCalUtilities {
 		return new URL(CALENDAR_FEED_PREFIX + target + CALENDAR_FEED_POSTFIX);
 	}
 
-	// --- EVENT REMOVER ---
-
-	static final void removeEvents(CachedCalendar calendar, VEvent[] events)
-			throws Exception {
-
-		// Create calendar's private feed URL
-		URL feedURL = getFeedURL(calendar);
-
-		// Get service from pool
-		CalendarService service = getService(calendar);
-
-		// Loop on events
-		VEvent event;
-		for (int n = 0; n < events.length; n++) {
-			event = events[n];
-
-			CalendarEventEntry oldEntry = getGoogleEntry(service, calendar,
-					feedURL, event);
-
-			// Remove event
-			if (oldEntry != null) {
-				if (log.isDebugEnabled()) {
-					log.debug("Removing event ("
-							+ ICalUtilities.getEventTitle(event)
-							+ ") from Google Calendar...");
-				}
-				try {
-					Link editLink = oldEntry.getEditLink();
-					if (editLink == null) {
-						log.warn("Unable to remove read-only event ("
-								+ ICalUtilities.getEventTitle(event) + ")!");
-						continue;
-					}
-					service.delete(new URL(editLink.getHref()));
-				} catch (ResourceNotFoundException notFound) {
-					log.warn("Event (" + ICalUtilities.getEventTitle(event)
-							+ ") not found in Google Calendar!");
-				} catch (Exception exception) {
-
-					// Get remote message
-					String msg = getMessageBody(exception);
-
-					// Skip delete
-					if (msg.indexOf("no instances") != -1
-							|| msg.indexOf("read-only") != -1) {
-						log.debug("Unable to remove event ("
-								+ ICalUtilities.getEventTitle(event) + ")!\r\n"
-								+ msg);
-						continue;
-					}
-
-					// Resend request
-					Thread.sleep(GOOGLE_RETRY_MILLIS);
-					try {
-						Link editLink = oldEntry.getEditLink();
-						service.delete(new URL(editLink.getHref()));
-					} catch (Exception error) {
-						log.warn("Unable to remove event ("
-								+ ICalUtilities.getEventTitle(event) + ")!\r\n"
-								+ msg);
-					}
-				}
-			} else {
-				log.warn("Event (" + ICalUtilities.getEventTitle(event)
-						+ ") not found in Google Calendar!");
-			}
-		}
-	}
-
 	// --- ICAL EVENT TO GOOGLE EVENT CONVERTER ---
 
 	private static final CalendarEventEntry convertVEvent(
-			CachedCalendar calendar, VTimeZone[] timeZones, VEvent event)
+			final CachedCalendar calendar, final VTimeZone[] timeZones, final VEvent event)
 			throws Exception {
-		CalendarEventEntry entry = new CalendarEventEntry();
+		final CalendarEventEntry entry = new CalendarEventEntry();
 		entry.setCanEdit(true);
 		entry.setDraft(new Boolean(false));
 		entry.setQuickAdd(false);
 		entry.setUpdated(new DateTime(new Date(), UTC));
-		entry.setSendEventNotifications(sendInvitations);
+		entry.setSendEventNotifications(false);
 		String text;
 
 		// Convert event UID to extended property
-		String uid = ICalUtilities.getUid(event);
+		final String uid = ICalUtilities.getUid(event);
 		if (uid != null) {
-			ExtendedProperty extension = new ExtendedProperty();
+			final ExtendedProperty extension = new ExtendedProperty();
 			extension.setName(UID_EXTENSION_NAME);
 			extension.setValue(uid);
 			entry.addExtendedProperty(extension);
 		}
 
 		// Convert priority to extended property
-		Priority priority = event.getPriority();
+		final Priority priority = event.getPriority();
 		if (priority != null) {
 			text = priority.getValue();
 			if (text != null && text.length() != 0) {
-				ExtendedProperty extension = new ExtendedProperty();
+				final ExtendedProperty extension = new ExtendedProperty();
 				extension.setName(PRIORITY_EXTENSION_NAME);
 				extension.setValue(text);
 				entry.addExtendedProperty(extension);
@@ -1135,11 +713,11 @@ public final class GCalUtilities {
 		}
 
 		// Convert URL to extended property
-		Url url = event.getUrl();
+		final Url url = event.getUrl();
 		if (url != null) {
 			text = url.getValue();
 			if (text != null && text.length() != 0) {
-				ExtendedProperty extension = new ExtendedProperty();
+				final ExtendedProperty extension = new ExtendedProperty();
 				extension.setName(URL_EXTENSION_NAME);
 				extension.setValue(text);
 				entry.addExtendedProperty(extension);
@@ -1147,11 +725,11 @@ public final class GCalUtilities {
 		}
 
 		// Convert URL to extended property
-		Property categories = event.getProperty(Property.CATEGORIES);
+		final Property categories = event.getProperty(Property.CATEGORIES);
 		if (categories != null) {
 			text = categories.getValue();
 			if (text != null && text.length() != 0 && !text.startsWith("http")) {
-				ExtendedProperty extension = new ExtendedProperty();
+				final ExtendedProperty extension = new ExtendedProperty();
 				extension.setName(CATEGORIES_EXTENSION_NAME);
 				extension.setValue(text);
 				entry.addExtendedProperty(extension);
@@ -1159,14 +737,14 @@ public final class GCalUtilities {
 		}
 
 		// Convert created to published
-		Created created = event.getCreated();
+		final Created created = event.getCreated();
 		if (created != null) {
-			DateTime published = toDateTime(created.getDate());
+			final DateTime published = toDateTime(created.getDate());
 			entry.setPublished(published);
 		}
 
 		// Convert summary to title
-		Summary summary = event.getSummary();
+		final Summary summary = event.getSummary();
 		if (summary != null) {
 			text = summary.getValue();
 			if (text != null && text.length() != 0) {
@@ -1175,7 +753,7 @@ public final class GCalUtilities {
 		}
 
 		// Convert description to content
-		Description desc = event.getDescription();
+		final Description desc = event.getDescription();
 		if (desc != null) {
 			text = desc.getValue();
 			if (text != null && text.length() != 0) {
@@ -1206,29 +784,29 @@ public final class GCalUtilities {
 
 		// Check dates
 		if (startDate.after(endDate)) {
-			Date swap = startDate;
+			final Date swap = startDate;
 			startDate = endDate;
 			endDate = swap;
 		}
 
 		// Set when
-		When startAndEnd = new When();
+		final When startAndEnd = new When();
 		startAndEnd.setStartTime(toDateTime(startDate));
 		startAndEnd.setEndTime(toDateTime(endDate));
 		entry.addTime(startAndEnd);
 
 		// Convert location to where
-		Location location = event.getLocation();
+		final Location location = event.getLocation();
 		if (location != null) {
 			text = location.getValue();
 			if (text != null) {
-				Where where = new Where(text, text, text);
+				final Where where = new Where(text, text, text);
 				entry.addLocation(where);
 			}
 		}
 
 		// Convert status (tentative, confirmed, canceled)
-		Status status = event.getStatus();
+		final Status status = event.getStatus();
 		if (status != null) {
 			EventStatus eventStatus;
 			text = status.getValue();
@@ -1245,7 +823,7 @@ public final class GCalUtilities {
 		}
 
 		// Convert classification to visibility (public / private)
-		Clazz clazz = event.getClassification();
+		final Clazz clazz = event.getClassification();
 		if (clazz != null) {
 			Visibility visible;
 			text = clazz.getValue();
@@ -1264,7 +842,7 @@ public final class GCalUtilities {
 		}
 
 		// Convert transparency (transparent / opaque = free / busy)
-		Transp transp = event.getTransparency();
+		final Transp transp = event.getTransparency();
 		if (transp == null) {
 
 			// Default is 'Available' (=free or transparent)
@@ -1278,21 +856,19 @@ public final class GCalUtilities {
 		}
 
 		// Convert attendees
-		String[] emails = ICalUtilities.getAttendees(event);
+		final String[] emails = ICalUtilities.getAttendees(event);
 		if (emails != null) {
-			for (int i = 0; i < emails.length; i++) {
-				EventWho who = new EventWho();
-				who.setEmail(emails[i]);
-				if (!sendInvitations) {
-					who.setAttendeeStatus(AttendeeStatus.EVENT_TENTATIVE);
-				}
+			for(final String email : emails) {
+				final EventWho who = new EventWho();
+				who.setEmail(email);
+				who.setAttendeeStatus(AttendeeStatus.EVENT_TENTATIVE);
 				entry.addParticipant(who);
 			}
 		}
 
 		// Convert recurrence
 		if (start != null && end != null) {
-			Property rRule = event.getProperty(Property.RRULE);
+			final Property rRule = event.getProperty(Property.RRULE);
 			if (rRule != null) {
 				VTimeZone timeZone = null;
 
@@ -1300,27 +876,27 @@ public final class GCalUtilities {
 				timeZone = getRecurrenceTimeZone(timeZones, event);
 
 				// Get recurrence exceptions
-				net.fortuna.ical4j.model.Date[] dates = ICalUtilities
+				final net.fortuna.ical4j.model.Date[] dates = ICalUtilities
 						.getExceptionDates(event);
 
 				// Create recurrence value
-				Recurrence recurrence = new Recurrence();
-				QuickWriter writer = new QuickWriter(500);
+				final Recurrence recurrence = new Recurrence();
+				final QuickWriter writer = new QuickWriter(500);
 				writer.write(start.toString().trim());
 				writer.write(CR_LF);
 				writer.write(end.toString().trim());
 				writer.write(CR_LF);
 				writer.write(rRule.toString().trim());
 				if (dates != null) {
-					for (int i = 0; i < dates.length; i++) {
+					for(final Date date : dates) {
 						writer.write(CR_LF);
 						writer.write(Property.EXDATE);
 						writer.write(':');
-						if (dates[i] instanceof net.fortuna.ical4j.model.DateTime) {
-							net.fortuna.ical4j.model.DateTime dateTime = (net.fortuna.ical4j.model.DateTime) dates[i];
+						if (date instanceof net.fortuna.ical4j.model.DateTime) {
+							final net.fortuna.ical4j.model.DateTime dateTime = (net.fortuna.ical4j.model.DateTime) date;
 							dateTime.setUtc(true);
 						}
-						writer.write(dates[i].toString());
+						writer.write(date.toString());
 					}
 				}
 				if (timeZone != null) {
@@ -1334,34 +910,34 @@ public final class GCalUtilities {
 		}
 
 		// Convert recurrenceID
-		RecurrenceId rid = event.getRecurrenceId();
+		final RecurrenceId rid = event.getRecurrenceId();
 		if (rid != null) {
-			Uid property = event.getUid();
+			final Uid property = event.getUid();
 			if (property != null) {
-				String id = property.getValue();
+				final String id = property.getValue();
 				if (id != null) {
 
 					// Get service from pool
-					CalendarService service = getService(calendar);
+					final CalendarService service = getService(calendar);
 
 					// Create calendar's private feed URL
-					URL feedURL = getFeedURL(calendar);
+					final URL feedURL = getFeedURL(calendar);
 
 					// Get original event
-					CalendarEventEntry parent = getGoogleEntryByUID(service,
+					final CalendarEventEntry parent = getGoogleEntryByUID(service,
 							calendar, feedURL, id);
 					if (parent != null) {
-						String originalHref = parent.getSelfLink().getHref();
+						final String originalHref = parent.getSelfLink().getHref();
 						String originalID = originalHref;
-						int i = originalID.lastIndexOf('/');
+						final int i = originalID.lastIndexOf('/');
 						if (i != -1) {
 							originalID = originalID.substring(i + 1);
 						}
 
-						OriginalEvent original = new OriginalEvent();
+						final OriginalEvent original = new OriginalEvent();
 						original.setOriginalId(originalID);
 						original.setHref(originalHref);
-						When when = new When();
+						final When when = new When();
 						when.setStartTime(toDateTime(rid.getDate()));
 						original.setOriginalStartTime(when);
 						entry.setOriginalEvent(original);
@@ -1373,9 +949,9 @@ public final class GCalUtilities {
 		// Convert reminder
 		int mins = ICalUtilities.getAlarmMinutes(event);
 		if (mins != -1) {
-			Reminder reminder1 = new Reminder();
-			Reminder reminder2 = new Reminder();
-			Reminder reminder3 = new Reminder();
+			final Reminder reminder1 = new Reminder();
+			final Reminder reminder2 = new Reminder();
+			final Reminder reminder3 = new Reminder();
 			reminder1.setMethod(Reminder.Method.ALERT);
 			reminder2.setMethod(Reminder.Method.EMAIL);
 			reminder3.setMethod(Reminder.Method.SMS);
@@ -1383,7 +959,7 @@ public final class GCalUtilities {
 			if (mins == 0) {
 
 				// Absolute time = clear reminders mark
-				DateTime dummy = new DateTime(0);
+				final DateTime dummy = new DateTime(0);
 				reminder1.setAbsoluteTime(dummy);
 				reminder2.setAbsoluteTime(dummy);
 				reminder3.setAbsoluteTime(dummy);
@@ -1451,11 +1027,11 @@ public final class GCalUtilities {
 		return entry;
 	}
 
-	static final DateTime toDateTime(Date date) throws Exception {
+	private static final DateTime toDateTime(final Date date) throws Exception {
 		if (date == null) {
 			return null;
 		}
-		boolean isAllDay = date.toString().indexOf('T') == -1;
+		final boolean isAllDay = date.toString().indexOf('T') == -1;
 		DateTime dateTime;
 		if (isAllDay) {
 			dateTime = toOneDayEventDateTime(date);
@@ -1466,12 +1042,12 @@ public final class GCalUtilities {
 		return dateTime;
 	}
 
-	private static final DateTime toOneDayEventDateTime(Date date)
+	private static final DateTime toOneDayEventDateTime(final Date date)
 			throws Exception {
 
 		// Convert one day event's date to UTC date
-		String text = date.toString();
-		GregorianCalendar calendar = new GregorianCalendar(UTC);
+		final String text = date.toString();
+		final GregorianCalendar calendar = new GregorianCalendar(UTC);
 		calendar.set(GregorianCalendar.YEAR, Integer.parseInt(text.substring(0,
 				4)));
 		calendar.set(GregorianCalendar.MONTH, Integer.parseInt(text.substring(
@@ -1482,21 +1058,21 @@ public final class GCalUtilities {
 		calendar.set(GregorianCalendar.MINUTE, 0);
 		calendar.set(GregorianCalendar.SECOND, 0);
 		calendar.set(GregorianCalendar.MILLISECOND, 0);
-		DateTime dateTime = new DateTime(calendar.getTime(), UTC);
+		final DateTime dateTime = new DateTime(calendar.getTime(), UTC);
 		return dateTime;
 	}
 
-	private static final VTimeZone getRecurrenceTimeZone(VTimeZone[] timeZones,
-			VEvent event) throws Exception {
+	private static final VTimeZone getRecurrenceTimeZone(final VTimeZone[] timeZones,
+			final VEvent event) throws Exception {
 		if (timeZones == null || timeZones.length == 0) {
 			return null;
 		}
-		String tzid = getTimeZoneID(event);
+		final String tzid = getTimeZoneID(event);
 		if (tzid != null) {
 			VTimeZone timeZone;
-			for (int i = 0; i < timeZones.length; i++) {
-				timeZone = timeZones[i];
-				TzId id = timeZone.getTimeZoneId();
+			for(final VTimeZone timeZone2 : timeZones) {
+				timeZone = timeZone2;
+				final TzId id = timeZone.getTimeZoneId();
 				if (tzid.toLowerCase().equals(
 						id.getValue().toString().toLowerCase())) {
 					return timeZone;
@@ -1506,14 +1082,14 @@ public final class GCalUtilities {
 		return null;
 	}
 
-	private static final String getTimeZoneID(VEvent event) throws Exception {
-		Property start = event.getProperty(Property.DTSTART);
+	private static final String getTimeZoneID(final VEvent event) throws Exception {
+		final Property start = event.getProperty(Property.DTSTART);
 		if (start != null) {
-			String tzid = start.toString();
+			final String tzid = start.toString();
 			if (tzid != null) {
-				int s = tzid.indexOf(Property.TZID);
+				final int s = tzid.indexOf(Property.TZID);
 				if (s != -1) {
-					int e = tzid.indexOf(':', s);
+					final int e = tzid.indexOf(':', s);
 					if (e != -1) {
 						return tzid.substring(s + 5, e);
 					} else {
@@ -1530,18 +1106,18 @@ public final class GCalUtilities {
 	// --- GOOGLE EVENT FEED ---
 
 	private static final List getGoogleEntries(CalendarService service,
-			CachedCalendar calendar, URL feedURL) throws Exception {
+			final CachedCalendar calendar, final URL feedURL) throws Exception {
 
 		// Request feed
 		CalendarEventFeed feed;
 		for (int tries = 0;; tries++) {
 			try {
-				CalendarQuery query = new CalendarQuery(feedURL);
+				final CalendarQuery query = new CalendarQuery(feedURL);
 				query.setMaxResults(MAX_FEED_ENTRIES);
-				feed = (CalendarEventFeed) service.query(query,
+				feed = service.query(query,
 						CalendarEventFeed.class);
 				break;
-			} catch (Exception loadError) {
+			} catch (final Exception loadError) {
 				if (tries == 5) {
 					throw loadError;
 				}
@@ -1564,11 +1140,11 @@ public final class GCalUtilities {
 	private static final HashMap uidMaps = new HashMap();
 
 	private static final CalendarEventEntry getGoogleEntry(
-			CalendarService service, CachedCalendar calendar, URL feedURL,
-			VEvent event) throws Exception {
+			final CalendarService service, final CachedCalendar calendar, final URL feedURL,
+			final VEvent event) throws Exception {
 
 		// Get local UID
-		String uid = ICalUtilities.getUid(event);
+		final String uid = ICalUtilities.getUid(event);
 		if (uid == null) {
 			return null;
 		}
@@ -1578,7 +1154,7 @@ public final class GCalUtilities {
 	}
 
 	private final static CalendarEventEntry getGoogleEntryByUID(
-			CalendarService service, CachedCalendar calendar, URL feedURL,
+			CalendarService service, final CachedCalendar calendar, final URL feedURL,
 			String uid) throws Exception {
 
 		// Create edit URL map
@@ -1587,7 +1163,7 @@ public final class GCalUtilities {
 		}
 
 		// Get editURL
-		HashMap editURLs = (HashMap) editURLMaps.get(calendar.url);
+		final HashMap editURLs = (HashMap) editURLMaps.get(calendar.url);
 		if (editURLs == null) {
 			return null;
 		}
@@ -1607,9 +1183,9 @@ public final class GCalUtilities {
 		// Load event
 		for (int tries = 0;; tries++) {
 			try {
-				return (CalendarEventEntry) service.getEntry(editURL,
+				return service.getEntry(editURL,
 						CalendarEventEntry.class);
-			} catch (Exception loadError) {
+			} catch (final Exception loadError) {
 				if (tries == 5) {
 					log.debug("Unable to load event (" + editURL + ")!",
 							loadError);
@@ -1625,99 +1201,90 @@ public final class GCalUtilities {
 		}
 	}
 
-	static final String getRemoteUID(CachedCalendar calendar, String id) {
-		HashMap mappedUIDs = (HashMap) uidMaps.get(calendar.url);
+	private static final String getRemoteUID(final CachedCalendar calendar, final String id) {
+		final HashMap mappedUIDs = (HashMap) uidMaps.get(calendar.url);
 		if (mappedUIDs == null) {
 			return null;
 		}
 		return (String) mappedUIDs.get(id);
 	}
 
-	private static final HashMap createEditURLMap(CalendarService service,
-			CachedCalendar calendar, URL feedURL) throws Exception {
+	private static final HashMap createEditURLMap(final CalendarService service,
+			final CachedCalendar calendar, final URL feedURL) throws Exception {
 
 		// Create alarm registry
-		HashMap extensionMap;
-		if (enableExtensions) {
-			extensionMap = new HashMap();
-		} else {
-			extensionMap = null;
-		}
+		final HashMap extensionMap = new HashMap();
 
 		// Create edit URL map
-		List entries = getGoogleEntries(service, calendar, feedURL);
-		HashMap editURLs = new HashMap();
-		HashMap remoteUIDs = new HashMap();
+		final List entries = getGoogleEntries(service, calendar, feedURL);
+		final HashMap editURLs = new HashMap();
+		final HashMap remoteUIDs = new HashMap();
 		editURLMaps.put(calendar.url, editURLs);
 		uidMaps.put(calendar.url, remoteUIDs);
-		Calendar oldCalendar = ICalUtilities
+		final Calendar oldCalendar = ICalUtilities
 				.parseCalendar(calendar.previousBody);
-		VEvent[] events = ICalUtilities.getEvents(oldCalendar);
+		final VEvent[] events = ICalUtilities.getEvents(oldCalendar);
 
 		// Loop on events
 		VEvent event;
-		HashMap dateCache = new HashMap();
-		for (int n = 0; n < events.length; n++) {
-			event = events[n];
+		final HashMap dateCache = new HashMap();
+		for(final VEvent event2 : events) {
+			event = event2;
 
 			// Get local UID and RID
-			String uid = ICalUtilities.getUid(event);
+			final String uid = ICalUtilities.getUid(event);
 			if (uid == null) {
 				continue;
 			}
 
 			// Find original event
-			CalendarEventEntry oldEntry = findEntry(entries, event, dateCache);
+			final CalendarEventEntry oldEntry = findEntry(entries, event, dateCache);
 			if (oldEntry == null) {
 				continue;
 			}
 
 			// Get alarm
-			if (enableExtensions) {
-				List reminders = oldEntry.getReminder();
-				if (reminders != null && !reminders.isEmpty()) {
-					extensionMap.put(uid + "\ta", reminders.get(0));
-				}
+			final List reminders = oldEntry.getReminder();
+			if (reminders != null && !reminders.isEmpty()) {
+				extensionMap.put(uid + "\ta", reminders.get(0));
 			}
 
 			// Bind local UID to remote edit URL
-			Link editLink = oldEntry.getEditLink();
+			final Link editLink = oldEntry.getEditLink();
 			if (editLink == null) {
 				continue;
 			}
-			String editURL = editLink.getHref();
+			final String editURL = editLink.getHref();
 			editURLs.put(uid, new URL(editURL));
 
 			// Bind local UID to remote UID
-			List extensionList = oldEntry.getExtendedProperty();
+			final List extensionList = oldEntry.getExtendedProperty();
 			if (extensionList != null && !extensionList.isEmpty()) {
-				Iterator extensions = extensionList.iterator();
+				final Iterator extensions = extensionList.iterator();
 				ExtendedProperty extension;
 				while (extensions.hasNext()) {
 					extension = (ExtendedProperty) extensions.next();
-					String name = extension.getName();
+					final String name = extension.getName();
 					if (UID_EXTENSION_NAME.equals(name)) {
-						String localUID = extension.getValue();
+						final String localUID = extension.getValue();
 						if (!uid.equals(localUID)) {
 							remoteUIDs.put(localUID, uid);
 						}
 						continue;
 					}
-					if (enableExtensions) {
 
-						// Store extensions
-						if (CATEGORIES_EXTENSION_NAME.equals(name)) {
-							extensionMap.put(uid + "\tc", extension.getValue());
-							continue;
-						}
-						if (PRIORITY_EXTENSION_NAME.equals(name)) {
-							extensionMap.put(uid + "\tp", extension.getValue());
-							continue;
-						}
-						if (URL_EXTENSION_NAME.equals(name)) {
-							extensionMap.put(uid + "\tu", extension.getValue());
-							continue;
-						}
+					// Store extensions
+					if (CATEGORIES_EXTENSION_NAME.equals(name)) {
+						extensionMap.put(uid + "\tc", extension.getValue());
+						continue;
+					}
+					if (PRIORITY_EXTENSION_NAME.equals(name)) {
+						extensionMap.put(uid + "\tp", extension.getValue());
+						continue;
+					}
+					if (URL_EXTENSION_NAME.equals(name)) {
+						extensionMap.put(uid + "\tu", extension.getValue());
+						continue;
 					}
 				}
 			}
@@ -1727,15 +1294,15 @@ public final class GCalUtilities {
 		return extensionMap;
 	}
 
-	private static final CalendarEventEntry findEntry(List entries,
-			VEvent event, HashMap dateCache) throws Exception {
+	private static final CalendarEventEntry findEntry(final List entries,
+			final VEvent event, final HashMap dateCache) throws Exception {
 
 		// Get UID and RID
-		String uid = ICalUtilities.getUid(event);
+		final String uid = ICalUtilities.getUid(event);
 
 		// Get created
 		long created = 0;
-		Created createdDate = event.getCreated();
+		final Created createdDate = event.getCreated();
 		if (createdDate != null) {
 			created = createdDate.getDate().getTime();
 		}
@@ -1744,7 +1311,7 @@ public final class GCalUtilities {
 		String startDate = null;
 		DtStart dtStart = event.getStartDate();
 		if (dtStart != null) {
-			DateTime start = toDateTime(dtStart.getDate());
+			final DateTime start = toDateTime(dtStart.getDate());
 			if (start != null) {
 				startDate = start.toUiString();
 			}
@@ -1754,7 +1321,7 @@ public final class GCalUtilities {
 		String endDate = null;
 		DtEnd dtEnd = event.getEndDate();
 		if (dtEnd != null) {
-			DateTime end = toDateTime(dtEnd.getDate());
+			final DateTime end = toDateTime(dtEnd.getDate());
 			if (end != null) {
 				endDate = end.toUiString();
 			}
@@ -1762,14 +1329,14 @@ public final class GCalUtilities {
 
 		// Get title
 		String title = null;
-		Summary summary = event.getSummary();
+		final Summary summary = event.getSummary();
 		if (summary != null) {
 			title = ICalUtilities.normalizeLineBreaks(summary.getValue());
 		}
 
 		// Get content
 		String content = null;
-		Description description = event.getDescription();
+		final Description description = event.getDescription();
 		if (description != null) {
 			content = ICalUtilities.normalizeLineBreaks(description.getValue());
 		}
@@ -1778,18 +1345,18 @@ public final class GCalUtilities {
 		CalendarEventEntry bestEntry = null;
 		CalendarEventEntry entry;
 		int matchCounter, bestMatch = 0;
-		Iterator entryIterator = entries.iterator();
+		final Iterator entryIterator = entries.iterator();
 		while (entryIterator.hasNext()) {
 			entry = (CalendarEventEntry) entryIterator.next();
 			matchCounter = 0;
 
 			// Compare extended UID
-			List extensionList = entry.getExtendedProperty();
+			final List extensionList = entry.getExtendedProperty();
 			if (uid != null && extensionList != null
 					&& !extensionList.isEmpty()) {
-				Iterator extensions = extensionList.iterator();
+				final Iterator extensions = extensionList.iterator();
 				while (extensions.hasNext()) {
-					ExtendedProperty extension = (ExtendedProperty) extensions
+					final ExtendedProperty extension = (ExtendedProperty) extensions
 							.next();
 					if (UID_EXTENSION_NAME.equals(extension.getName())
 							&& uid.equals(extension.getValue())) {
@@ -1807,9 +1374,9 @@ public final class GCalUtilities {
 			}
 
 			// Compare created
-			DateTime published = entry.getPublished();
+			final DateTime published = entry.getPublished();
 			if (created != 0 && published != null) {
-				long remoteCreated = published.getValue();
+				final long remoteCreated = published.getValue();
 				if (created == remoteCreated) {
 					matchCounter++;
 				} else {
@@ -1820,7 +1387,7 @@ public final class GCalUtilities {
 			}
 
 			// Compare title
-			TextConstruct titleConstruct = entry.getTitle();
+			final TextConstruct titleConstruct = entry.getTitle();
 			if (titleConstruct != null && title != null) {
 				String titleText = titleConstruct.getPlainText();
 				if (titleText != null) {
@@ -1832,9 +1399,9 @@ public final class GCalUtilities {
 			}
 
 			// Compare content
-			Content contentConstruct = entry.getContent();
+			final Content contentConstruct = entry.getContent();
 			if (content != null && contentConstruct instanceof TextContent) {
-				TextContent textContent = (TextContent) contentConstruct;
+				final TextContent textContent = (TextContent) contentConstruct;
 				String contentText = textContent.getContent().getPlainText();
 				if (contentText != null) {
 					contentText = ICalUtilities
@@ -1847,11 +1414,11 @@ public final class GCalUtilities {
 			}
 
 			// Compare dates and times
-			String id = entry.getId();
+			final String id = entry.getId();
 			String entryStart = null;
 			String entryEnd = null;
-			String startKey = "s\t" + id;
-			String endKey = "e\t" + id;
+			final String startKey = "s\t" + id;
+			final String endKey = "e\t" + id;
 			entryStart = (String) dateCache.get(startKey);
 			if (startDate != null && entryStart != null) {
 				if (startDate.equals(entryStart)) {
@@ -1865,17 +1432,17 @@ public final class GCalUtilities {
 				}
 			}
 			if (entryStart == null || entryEnd == null) {
-				List whenList = entry.getTimes();
+				final List whenList = entry.getTimes();
 				if (whenList.isEmpty()) {
-					Recurrence recurrence = entry.getRecurrence();
+					final Recurrence recurrence = entry.getRecurrence();
 					if (recurrence != null) {
-						VEvent holder = parseRecurrence(recurrence);
+						final VEvent holder = parseRecurrence(recurrence);
 						if (holder != null) {
 							dtStart = holder.getStartDate();
 							if (dtStart != null) {
-								DateTime start = toDateTime(dtStart.getDate());
+								final DateTime start = toDateTime(dtStart.getDate());
 								if (start != null && startDate != null) {
-									boolean entryStartNull = (entryStart == null);
+									final boolean entryStartNull = (entryStart == null);
 									entryStart = start.toUiString();
 									dateCache.put(startKey, entryStart);
 									if (entryStart.equals(startDate)
@@ -1886,9 +1453,9 @@ public final class GCalUtilities {
 							}
 							dtEnd = holder.getEndDate();
 							if (dtEnd != null) {
-								DateTime end = toDateTime(dtEnd.getDate());
+								final DateTime end = toDateTime(dtEnd.getDate());
 								if (end != null && endDate != null) {
-									boolean entryEndNull = (entryEnd == null);
+									final boolean entryEndNull = (entryEnd == null);
 									entryEnd = end.toUiString();
 									dateCache.put(endKey, entryEnd);
 									if (entryEnd.equals(endDate)
@@ -1900,11 +1467,11 @@ public final class GCalUtilities {
 						}
 					}
 				} else {
-					When when = (When) whenList.get(0);
-					DateTime start = when.getStartTime();
+					final When when = (When) whenList.get(0);
+					final DateTime start = when.getStartTime();
 					if (start != null && startDate != null) {
 						start.setTzShift(new Integer(0));
-						boolean entryStartNull = (entryStart == null);
+						final boolean entryStartNull = (entryStart == null);
 						entryStart = start.toUiString();
 						dateCache.put(startKey, entryStart);
 						if (entryStart.equals(startDate) && entryStartNull) {
@@ -1912,10 +1479,10 @@ public final class GCalUtilities {
 						}
 					}
 
-					DateTime end = when.getEndTime();
+					final DateTime end = when.getEndTime();
 					if (end != null && endDate != null) {
 						end.setTzShift(new Integer(0));
-						boolean entryEndNull = (entryEnd == null);
+						final boolean entryEndNull = (entryEnd == null);
 						entryEnd = end.toUiString();
 						dateCache.put(endKey, entryEnd);
 						if (entryEnd.equals(endDate) && entryEndNull) {
@@ -1946,13 +1513,13 @@ public final class GCalUtilities {
 		return bestEntry;
 	}
 
-	private static final VEvent parseRecurrence(Recurrence recurrence) {
+	private static final VEvent parseRecurrence(final Recurrence recurrence) {
 		if (recurrence == null) {
 			return null;
 		}
-		VEvent event = null;
+		final VEvent event = null;
 		try {
-			QuickWriter writer = new QuickWriter(300);
+			final QuickWriter writer = new QuickWriter(300);
 			writer.write("BEGIN:VCALENDAR\r\n");
 			writer.write("VERSION:2.0\r\n");
 			writer.write("PRODID:DUMMY\r\n");
@@ -1963,9 +1530,9 @@ public final class GCalUtilities {
 			writer.write(recurrence.getValue());
 			writer.write("\r\nEND:VEVENT\r\n");
 			writer.write("END:VCALENDAR\r\n");
-			Calendar calendar = ICalUtilities.parseCalendar(writer.getBytes());
+			final Calendar calendar = ICalUtilities.parseCalendar(writer.getBytes());
 			return ICalUtilities.getEvents(calendar)[0];
-		} catch (Exception ignored) {
+		} catch (final Exception ignored) {
 			log.debug(ignored);
 		}
 		return event;
@@ -1976,9 +1543,9 @@ public final class GCalUtilities {
 	private static final HashMap servicePool = new HashMap();
 	private static final HashSet invalidCredentials = new HashSet();
 
-	private static final synchronized CalendarService getService(Request request)
+	private static final synchronized CalendarService getService(final Request request)
 			throws Exception {
-		long now = System.currentTimeMillis();
+		final long now = System.currentTimeMillis();
 		PooledGoogleService service;
 		service = (PooledGoogleService) servicePool.get(request.url);
 		if (service != null) {
@@ -1996,7 +1563,7 @@ public final class GCalUtilities {
 			service = new PooledGoogleService();
 			service.service = new CalendarService(Configurator.VERSION.replace(
 					' ', '-'));
-			String key = request.url + '\t' + request.username + '\t'
+			final String key = request.url + '\t' + request.username + '\t'
 					+ request.password;
 			for (int tries = 0;; tries++) {
 				try {
@@ -2005,11 +1572,11 @@ public final class GCalUtilities {
 							request.password);
 					invalidCredentials.remove(key);
 					break;
-				} catch (InvalidCredentialsException wrongPassword) {
+				} catch (final InvalidCredentialsException wrongPassword) {
 					log.fatal("Invalid Gmail username or password!");
 					invalidCredentials.add(key);
 					throw wrongPassword;
-				} catch (Exception ioException) {
+				} catch (final Exception ioException) {
 					if (tries == 5) {
 						log.fatal("Connection refused!", ioException);
 						invalidCredentials.add(key);
@@ -2028,12 +1595,7 @@ public final class GCalUtilities {
 		return service.service;
 	}
 
-	public static final boolean hasInvalidCredentials(Request request) {
-		return invalidCredentials.remove(request.url + '\t' + request.username
-				+ '\t' + request.password);
-	}
-
-	public static final String normalizeUsername(String username) {
+	private static final String normalizeUsername(final String username) {
 		if (username != null && username.length() > 0) {
 			if (username.endsWith("@googlemail.com")
 					|| username.endsWith("@gmail")
@@ -2052,7 +1614,7 @@ public final class GCalUtilities {
 
 	private static final Properties calendarNames = new Properties();
 
-	public static final String[] getCalendarURLs(Request request, File workDir)
+	public static final String[] getCalendarURLs(final Request request, final File workDir)
 			throws Exception {
 
 		// Get service from pool
@@ -2062,16 +1624,16 @@ public final class GCalUtilities {
 		CalendarService service = getService(request);
 
 		// Create metafeed URL
-		URL feedUrl = new URL(METAFEED_URL);
+		final URL feedUrl = new URL(METAFEED_URL);
 
 		// Send the request and receive the response
 		CalendarFeed resultFeed;
 		for (int tries = 0;; tries++) {
 			try {
-				resultFeed = (CalendarFeed) service.getFeed(feedUrl,
+				resultFeed = service.getFeed(feedUrl,
 						CalendarFeed.class);
 				break;
-			} catch (Exception loadError) {
+			} catch (final Exception loadError) {
 				if (tries == 3) {
 					throw loadError;
 				}
@@ -2085,12 +1647,12 @@ public final class GCalUtilities {
 		}
 
 		// Convert to array
-		List entries = resultFeed.getEntries();
+		final List entries = resultFeed.getEntries();
 		if (entries == null || entries.isEmpty()) {
 			return new String[0];
 		}
-		LinkedList urls = new LinkedList();
-		Iterator entryIterator = entries.iterator();
+		final LinkedList urls = new LinkedList();
+		final Iterator entryIterator = entries.iterator();
 		TextConstruct title;
 		CalendarEntry entry;
 		String url, text;
@@ -2125,12 +1687,12 @@ public final class GCalUtilities {
 			}
 		}
 		saveCalendarNamesToCache(workDir);
-		String[] array = new String[urls.size()];
+		final String[] array = new String[urls.size()];
 		urls.toArray(array);
 		return array;
 	}
 
-	public static final String getCalendarName(String url, File workDir) {
+	public static final String getCalendarName(String url, final File workDir) {
 		if (url == null || url.length() == 0) {
 			return null;
 		}
@@ -2144,14 +1706,14 @@ public final class GCalUtilities {
 				url = url.substring(GOOGLE_HTTPS_URL.length());
 			}
 		}
-		String name = (String) calendarNames.get(url);
+		final String name = (String) calendarNames.get(url);
 		if (name != null) {
 			return name;
 		}
-		int i = url.indexOf("/private");
+		final int i = url.indexOf("/private");
 		if (i != -1) {
 			url = url.substring(0, i);
-			Iterator names = calendarNames.entrySet().iterator();
+			final Iterator names = calendarNames.entrySet().iterator();
 			Map.Entry entry;
 			while (names.hasNext()) {
 				entry = (Map.Entry) names.next();
@@ -2163,30 +1725,30 @@ public final class GCalUtilities {
 		return null;
 	}
 
-	private static final void loadCalendarNamesFromCache(File workDir) {
+	private static final void loadCalendarNamesFromCache(final File workDir) {
 		try {
-			File file = new File(workDir, "gcal-names.txt");
+			final File file = new File(workDir, "gcal-names.txt");
 			if (!file.isFile()) {
 				return;
 			}
-			BufferedInputStream in = new BufferedInputStream(
+			final BufferedInputStream in = new BufferedInputStream(
 					new FileInputStream(file));
 			calendarNames.load(in);
 			in.close();
-		} catch (Exception ioException) {
+		} catch (final Exception ioException) {
 			log.warn("Unable to load 'gcal-names.txt'!", ioException);
 		}
 	}
 
-	private static final void saveCalendarNamesToCache(File workDir) {
+	private static final void saveCalendarNamesToCache(final File workDir) {
 		try {
-			File file = new File(workDir, "gcal-names.txt");
-			BufferedOutputStream out = new BufferedOutputStream(
+			final File file = new File(workDir, "gcal-names.txt");
+			final BufferedOutputStream out = new BufferedOutputStream(
 					new FileOutputStream(file));
 			calendarNames.store(out, "CALENDAR NAME CACHE");
 			out.flush();
 			out.close();
-		} catch (Exception ioException) {
+		} catch (final Exception ioException) {
 			log.warn("Unable to save 'gcal-names.txt'!", ioException);
 		}
 	}

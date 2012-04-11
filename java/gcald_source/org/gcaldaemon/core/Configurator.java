@@ -12,17 +12,10 @@
 //
 package org.gcaldaemon.core;
 
-import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.InputStream;
 import java.io.RandomAccessFile;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.net.URL;
-import java.nio.channels.FileChannel;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -50,12 +43,7 @@ public final class Configurator {
 
 	// --- COMMON CONSTANTS ---
 
-	public static final String VERSION = "GCALDaemon V1.0 beta 16";
-
-	public static final byte MODE_DAEMON = 0;
-	public static final byte MODE_RUNONCE = 1;
-	public static final byte MODE_CONFIGEDITOR = 2;
-	public static final byte MODE_EMBEDDED = 3;
+	protected static final String VERSION = "GwGcalSync 1.0";
 
 	private static final int MAX_CACHE_SIZE = 100;
 	private static final SimpleDateFormat BACKUP_FORMAT = new SimpleDateFormat(
@@ -63,82 +51,27 @@ public final class Configurator {
 
 	// --- SIMPLE CONFIG CONSTANTS ---
 
-	public static final String REMOTE_DELETE_ENABLED = "remote.delete.enabled";
-	public static final String FILE_POLLING_FILE = "file.polling.file";
-	public static final String FILE_RELOADER_SCRIPT = "file.reloader.script";
-	public static final String LDAP_VCARD_ENCODING = "ldap.vcard.encoding";
-	public static final String MAILTERM_DIR_PATH = "mailterm.dir.path";
 	public static final String FEED_CACHE_TIMEOUT = "feed.cache.timeout";
-	public static final String FILE_ENABLED = "file.enabled";
-	public static final String NOTIFIER_LOCAL_USERS = "notifier.local.users";
-	public static final String HTTP_ALLOWED_ADDRESSES = "http.allowed.addresses";
-	public static final String PROXY_PASSWORD = "proxy.password";
-	public static final String PROXY_USERNAME = "proxy.username";
 	public static final String HTTP_ENABLED = "http.enabled";
-	public static final String SENDMAIL_ENABLED = "sendmail.enabled";
-	public static final String LDAP_GOOGLE_PASSWORD = "ldap.google.password";
-	public static final String LDAP_GOOGLE_USERNAME = "ldap.google.username";
-	public static final String NOTIFIER_WINDOW_SOUND = "notifier.window.sound";
 	public static final String ICAL_BACKUP_TIMEOUT = "ical.backup.timeout";
-	public static final String SEND_INVITATIONS = "send.invitations";
-	public static final String MAILTERM_GOOGLE_PASSWORD = "mailterm.google.password";
-	public static final String MAILTERM_GOOGLE_USERNAME = "mailterm.google.username";
-	public static final String LDAP_CACHE_TIMEOUT = "ldap.cache.timeout";
-	public static final String MAILTERM_ALLOWED_ADDRESSES = "mailterm.allowed.addresses";
 	public static final String PROXY_PORT = "proxy.port";
 	public static final String FEED_DUPLICATION_FILTER = "feed.duplication.filter";
 	public static final String FEED_ENABLED = "feed.enabled";
-	public static final String LDAP_ALLOWED_HOSTNAMES = "ldap.allowed.hostnames";
-	public static final String SENDMAIL_GOOGLE_PASSWORD = "sendmail.google.password";
-	public static final String SENDMAIL_GOOGLE_USERNAME = "sendmail.google.username";
-	public static final String LDAP_ENABLED = "ldap.enabled";
-	public static final String MAILTERM_CONSOLE_ENCODING = "mailterm.console.encoding";
-	public static final String NOTIFIER_WINDOW_STYLE = "notifier.window.style";
-	public static final String LDAP_VCARD_VERSION = "ldap.vcard.version";
-	public static final String SENDMAIL_DIR_PATH = "sendmail.dir.path";
-	public static final String LOG_CONFIG = "log.config";
-	public static final String HTTP_PORT = "http.port";
-	public static final String MAILTERM_POLLING_GOOGLE = "mailterm.polling.google";
-	public static final String LDAP_ALLOWED_ADDRESSES = "ldap.allowed.addresses";
 	public static final String PROGRESS_ENABLED = "progress.enabled";
-	public static final String MAILTERM_MAIL_SUBJECT = "mailterm.mail.subject";
-	public static final String SENDMAIL_POLLING_DIR = "sendmail.polling.dir";
 	public static final String FEED_EVENT_LENGTH = "feed.event.length";
 	public static final String PROXY_HOST = "proxy.host";
-	public static final String NOTIFIER_DATE_FORMAT = "notifier.date.format";
-	public static final String EXTENDED_SYNC_ENABLED = "extended.sync.enabled";
-	public static final String HTTP_ALLOWED_HOSTNAMES = "http.allowed.hostnames";
-	public static final String FILE_OFFLINE_ENABLED = "file.offline.enabled";
-	public static final String MAILTERM_ENABLED = "mailterm.enabled";
-	public static final String NOTIFIER_GOOGLE_PASSWORD = "notifier.google.password";
-	public static final String NOTIFIER_POLLING_MAILBOX = "notifier.polling.mailbox";
-	public static final String NOTIFIER_GOOGLE_USERNAME = "notifier.google.username";
-	public static final String NOTIFIER_ENABLED = "notifier.enabled";
 	public static final String CACHE_TIMEOUT = "cache.timeout";
-	public static final String FILE_POLLING_GOOGLE = "file.polling.google";
-	public static final String LDAP_PORT = "ldap.port";
-	public static final String EDITOR_LANGUAGE = "editor.language";
-	public static final String EDITOR_LOOK_AND_FEEL = "editor.look.and.feel";
 	public static final String WORK_DIR = "work.dir";
 	public static final String REMOTE_ALARM_TYPES = "remote.alarm.types";
-
-	// --- FILE CONFIG CONSTANTS ---
-
-	public static final String FILE_PRIVATE_ICAL_URL = "file.private.ical.url";
-	public static final String FILE_ICAL_PATH = "file.ical.path";
-	public static final String FILE_GOOGLE_USERNAME = "file.google.username";
-	public static final String FILE_GOOGLE_PASSWORD = "file.google.password";
 
 	// --- UTILS ---
 
 	private Properties config = new Properties();
 
-	private final HashMap toDoCache = new HashMap();
-	private final HashSet backupFiles = new HashSet();
+	private final HashMap<String, String> toDoCache = new HashMap<String, String>();
+	private final HashSet<String> backupFiles = new HashSet<String>();
 	private final File workDirectory;
 	private final long calendarCacheTimeout;
-	private final boolean standaloneMode;
-	private final byte mode;
 	private final long backupTimeout;
 
 	private long backupLastVerified;
@@ -146,173 +79,17 @@ public final class Configurator {
 
 	// --- SERVICES AND LISTENERS ---
 
-	private Thread synchronizer;
-	private Thread gmailPool;
-
-	private Thread servletListener;
-	private Thread httpListener;
 	private Thread fileListener;
-	private Thread contactLoader;
-	private Thread mailNotifier;
-	private Thread sendMail;
-	private Thread mailTerm;
 
 	// --- CONSTRUCTOR ---
 
 	public Configurator(final String configPath, final Properties properties,
-			final boolean userHome, final byte mode) throws Exception {
-		this.mode = mode;
+			final boolean userHome) throws Exception {
 		int i;
-		File programRootDir = null;
-		if (mode == MODE_EMBEDDED) {
-
-			// Embedded mode
-			standaloneMode = false;
-			config = properties;
-			final String workPath = getConfigProperty(WORK_DIR, null);
-			workDirectory = new File(workPath);
-		} else {
-
-			// Load config
-			if (configPath != null) {
-				configFile = new File(configPath);
-			}
-			InputStream in = null;
-			boolean configInClassPath = false;
-			if (configFile == null || !configFile.isFile()) {
-				try {
-					in = Configurator.class
-							.getResourceAsStream("/gcal-daemon.cfg");
-					configInClassPath = in != null;
-				} catch (final Exception ignored) {
-					in = null;
-				}
-				if (in == null) {
-					System.out
-							.println("INFO  | Searching main configuration file...");
-					final String path = (new File("x")).getAbsolutePath().replace(
-							'\\', '/');
-					i = path.lastIndexOf('/');
-					if (i > 1) {
-						i = path.lastIndexOf('/', i - 1);
-						if (i > 1) {
-							configFile = new File(path.substring(0, i),
-									"conf/gcal-daemon.cfg");
-						}
-					}
-					if (configFile == null || !configFile.isFile()) {
-						configFile = new File(
-								"/usr/local/sbin/GCALDaemon/conf/gcal-daemon.cfg");
-					}
-					if (configFile == null || !configFile.isFile()) {
-						configFile = new File(
-								"/GCALDaemon/conf/gcal-daemon.cfg");
-					}
-					if (configFile == null || !configFile.isFile()) {
-						final File root = new File("/");
-						final String[] dirs = root.list();
-						if (dirs != null) {
-							for (i = 0; i < dirs.length; i++) {
-								configFile = new File('/' + dirs[i]
-										+ "/GCALDaemon/conf/gcal-daemon.cfg");
-								if (configFile.isFile()) {
-									break;
-								}
-							}
-						}
-					}
-					if (configFile == null || !configFile.isFile()) {
-						throw new FileNotFoundException(
-								"Missing main configuration file: "
-										+ configPath);
-					}
-					if (!userHome) {
-
-						// Open global config file
-						in = new FileInputStream(configFile);
-					}
-				}
-			} else {
-				if (!userHome) {
-
-					// Open global config file
-					in = new FileInputStream(configFile);
-				}
-			}
-			standaloneMode = !configInClassPath;
-			if (in != null) {
-
-				// Load global config file
-				config.load(new BufferedInputStream(in));
-				in.close();
-			}
-
-			// Loading config from classpath
-			if (configFile == null) {
-				try {
-					final URL url = Configurator.class
-							.getResource("/gcal-daemon.cfg");
-					configFile = new File(url.getFile());
-				} catch (final Exception ignored) {
-				}
-			}
-			programRootDir = configFile.getParentFile().getParentFile();
-			System.setProperty("gcaldaemon.program.dir", programRootDir
-					.getAbsolutePath());
-			final String workPath = getConfigProperty(WORK_DIR, null);
-			File directory;
-			if (workPath == null) {
-				directory = new File(programRootDir, "work");
-			} else {
-				directory = new File(workPath);
-			}
-			if (!directory.isDirectory()) {
-				if (!directory.mkdirs()) {
-					directory = new File("work");
-					directory.mkdirs();
-				}
-			}
-			workDirectory = directory;
-
-			// User-specific config file handler
-			if (userHome) {
-				boolean useGlobal = true;
-				try {
-					final String home = System.getProperty("user.home", null);
-					if (home != null) {
-						final File userConfig = new File(home,
-								".gcaldaemon/gcal-daemon.cfg");
-						if (!userConfig.isFile()) {
-
-							// Create new user-specific config
-							final File userDir = new File(home, ".gcaldaemon");
-							userDir.mkdirs();
-							copyFile(configFile, userConfig);
-							if (!userConfig.isFile()) {
-								userConfig.delete();
-								userDir.delete();
-							}
-						}
-						if (userConfig.isFile()) {
-
-							// Load user-specific config
-							configFile = userConfig;
-							in = new FileInputStream(configFile);
-							config.load(new BufferedInputStream(in));
-							in.close();
-							useGlobal = false;
-						}
-					}
-				} catch (final Exception ignored) {
-				}
-				if (useGlobal) {
-
-					// Load global config file
-					config.load(new BufferedInputStream(in));
-					in.close();
-				}
-			}
-		}
+		// Embedded mode
+		config = properties;
+		final String workPath = getConfigProperty(WORK_DIR, null);
+		workDirectory = new File(workPath);
 
 		// Disable unnecessary INFO messages of the GData API
 		try {
@@ -323,34 +100,12 @@ public final class Configurator {
 		}
 
 		final Log log = LogFactory.getLog(Configurator.class);
-		log.info(VERSION + " starting...");
-		if (configFile != null && log.isDebugEnabled()) {
-			log.debug("Config loaded successfully (" + configFile + ").");
-		}
-
-		// Check Java version
-		double jvmVersion = 1.5;
-		try {
-			jvmVersion = Float.valueOf(
-					System.getProperty("java.version", "1.5").substring(0, 3))
-					.floatValue();
-		} catch (final Exception ignored) {
-		}
-		if (jvmVersion < 1.5) {
-			log
-					.fatal("GCALDaemon requires at least Java 1.5! Current version: "
-							+ System.getProperty("java.version"));
-			throw new Exception("Invalid JVM version!");
-		}
 
 		// Check permission
 		if (workDirectory.isDirectory() && !workDirectory.canWrite()) {
 			if (System.getProperty("os.name", "unknown").toLowerCase().indexOf(
 					"windows") == -1) {
-				String path = workDirectory.getCanonicalPath();
-				if (programRootDir != null) {
-					path = programRootDir.getCanonicalPath();
-				}
+				final String path = workDirectory.getCanonicalPath();
 				log.warn("Please check the file permissions on the '"
 						+ workDirectory.getCanonicalPath() + "' folder!\r\n"
 						+ "Hint: [sudo] chmod -R 777 " + path);
@@ -369,6 +124,7 @@ public final class Configurator {
 		CompatibilityHints.setHintEnabled(
 				CompatibilityHints.KEY_NOTES_COMPATIBILITY, true);
 
+		// There's no sane reason to enable this, but I guess if your Groupwise is using a self-signed cert....
 //		// Disable SSL validation
 //		try {
 //
@@ -418,46 +174,8 @@ public final class Configurator {
 
 		// Setup proxy
 		final String proxyHost = getConfigProperty(PROXY_HOST, null);
-		if (proxyHost != null) {
-			final String proxyPort = getConfigProperty(PROXY_PORT, null);
-			if (proxyPort == null) {
-				log.warn("Missing 'proxy.port' configuration property!");
-			} else {
-
-				// HTTP proxy server properties
-				System.setProperty("http.proxyHost", proxyHost);
-				System.setProperty("http.proxyPort", proxyPort);
-				System.setProperty("http.proxySet", "true");
-
-				// HTTPS proxy server properties
-				System.setProperty("https.proxyHost", proxyHost);
-				System.setProperty("https.proxyPort", proxyPort);
-				System.setProperty("https.proxySet", "true");
-
-				// Setup proxy credentials
-				final String username = getConfigProperty(PROXY_USERNAME, null);
-				final String encodedPassword = getConfigProperty(PROXY_PASSWORD, null);
-				if (username != null) {
-					if (encodedPassword == null) {
-						log
-								.warn("Missing 'proxy.password' configuration property!");
-					} else {
-						final String password = StringUtils
-								.decodePassword(encodedPassword);
-
-						// HTTP auth credentials
-						System.setProperty("http.proxyUser", username);
-						System.setProperty("http.proxyUserName", username);
-						System.setProperty("http.proxyPassword", password);
-
-						// HTTPS auth credentials
-						System.setProperty("https.proxyUser", username);
-						System.setProperty("https.proxyUserName", username);
-						System.setProperty("https.proxyPassword", password);
-					}
-				}
-			}
-		}
+		final int proxyPort = Integer.valueOf(getConfigProperty(PROXY_PORT, "0"));
+		GCalUtilities.initHttpClient(proxyHost, proxyPort);
 
 		// Get iCal cache timeout
 		long timeout = getConfigProperty(CACHE_TIMEOUT, 180000L);
@@ -476,22 +194,11 @@ public final class Configurator {
 		backupTimeout = timeout;
 
 		// Get extended syncronization mode (alarms, url, category, etc)
-		boolean enable = getConfigProperty(EXTENDED_SYNC_ENABLED, false);
 		System
-				.setProperty("gcaldaemon.extended.sync", Boolean
-						.toString(enable));
-		if (enable) {
-			log.info("Extended synchronization enabled.");
-		}
-
-		// Google send an email to the attendees to invite them to attend
-		enable = getConfigProperty(SEND_INVITATIONS, false);
-		System.setProperty("gcaldaemon.send.invitations", Boolean
-				.toString(enable));
+				.setProperty("gcaldaemon.extended.sync", Boolean.toString(true));
 
 		// Enabled alarm types in the Google Calendar (e.g. 'sms,popup,email')
-		System.setProperty("gcaldaemon.remote.alarms", getConfigProperty(
-				REMOTE_ALARM_TYPES, "email,sms,popup"));
+		System.setProperty("gcaldaemon.remote.alarms", getConfigProperty(REMOTE_ALARM_TYPES, "popup"));//email,sms,
 
 		timeout = getConfigProperty(FEED_CACHE_TIMEOUT, 3600000L);
 		if (timeout < 60000L) {
@@ -521,143 +228,15 @@ public final class Configurator {
 		while (mainGroup.getParent() != null) {
 			mainGroup = mainGroup.getParent();
 		}
-
-		// Configurator mode - launch ConfigTool's window
-//		if (mode == MODE_CONFIGEDITOR) {
-//			synchronizer = new Synchronizer(mainGroup, this);
-//			gmailPool = startService(log, mainGroup,
-//					"org.gcaldaemon.core.GmailPool");
-//			new ConfigEditor(this, monitor);
-//			return;
-//		}
-
-		// Init synchronizer
-		final boolean enableHTTP = getConfigProperty(HTTP_ENABLED, true);
-		final boolean enableFile = getConfigProperty(FILE_ENABLED, false);
-		if (enableHTTP || enableFile || !standaloneMode) {
-			synchronizer = new Synchronizer(mainGroup, this);
-			if (mode == MODE_EMBEDDED) {
-				return;
-			}
-		}
-
-		// On demand mode - run once then quit
-		if (mode == MODE_RUNONCE) {
-			fileListener = startService(log, mainGroup,
-					"org.gcaldaemon.core.file.OfflineFileListener");
-			return;
-		}
-
-		// Init Gmail pool
-		final boolean enableLDAP = getConfigProperty(LDAP_ENABLED, false);
-		final boolean enableSendMail = getConfigProperty(SENDMAIL_ENABLED, false);
-		final boolean enableMailTerm = getConfigProperty(MAILTERM_ENABLED, false);
-		if (enableLDAP || enableSendMail || enableMailTerm) {
-			gmailPool = startService(log, mainGroup,
-					"org.gcaldaemon.core.GmailPool");
-		}
-
-		if (standaloneMode) {
-
-			// Init HTTP listener
-			if (enableHTTP) {
-				httpListener = startService(log, mainGroup,
-						"org.gcaldaemon.core.http.HTTPListener");
-			} else {
-				log.info("HTTP server disabled.");
-			}
-		} else {
-
-			// Init J2EE servlet listener
-			servletListener = startService(log, mainGroup,
-					"org.gcaldaemon.core.servlet.ServletListener");
-		}
-
-		// Init file listener
-		if (enableFile) {
-			if (getConfigProperty(FILE_OFFLINE_ENABLED, true)) {
-				fileListener = startService(log, mainGroup,
-						"org.gcaldaemon.core.file.OfflineFileListener");
-			} else {
-				fileListener = startService(log, mainGroup,
-						"org.gcaldaemon.core.file.OnlineFileListener");
-			}
-		} else {
-			if (standaloneMode) {
-				log.info("File listener disabled.");
-			}
-		}
-
-		// Clear configuration holder
-		config.clear();
-	}
-
-	private final Thread startService(final Log log, final ThreadGroup group, final String name)
-			throws Exception {
-		try {
-			final Class serviceClass = Class.forName(name);
-			final Class[] types = new Class[2];
-			types[0] = ThreadGroup.class;
-			types[1] = Configurator.class;
-			final Constructor constructor = serviceClass.getConstructor(types);
-			final Object[] values = new Object[2];
-			values[0] = group;
-			values[1] = this;
-			return (Thread) constructor.newInstance(values);
-		} catch (final Exception configError) {
-			String message = configError.getMessage();
-			Throwable cause = configError.getCause();
-			while (cause != null) {
-				if (cause.getMessage() != null) {
-					message = cause.getMessage();
-				}
-				cause = cause.getCause();
-			}
-			log.fatal(message.toUpperCase(), configError);
-			throw configError;
-		}
-	}
-
-	public final byte getRunMode() {
-		return mode;
 	}
 
 	public final File getConfigFile() {
 		return configFile;
 	}
 
-	public static final void copyFile(final File from, final File to) throws Exception {
-		if (from == null || to == null || !from.exists()) {
-			return;
-		}
-		RandomAccessFile fromFile = null;
-		RandomAccessFile toFile = null;
-		try {
-			fromFile = new RandomAccessFile(from, "r");
-			toFile = new RandomAccessFile(to, "rw");
-			final FileChannel fromChannel = fromFile.getChannel();
-			final FileChannel toChannel = toFile.getChannel();
-			final long length = fromFile.length();
-			long start = 0;
-			while (start < length) {
-				start += fromChannel.transferTo(start, length - start,
-						toChannel);
-			}
-			fromChannel.close();
-			toChannel.close();
-		} finally {
-			if (fromFile != null) {
-				fromFile.close();
-			}
-			if (toFile != null) {
-				toFile.close();
-			}
-		}
-	}
-
 	// --- COMMON CONFIGURATION PROPERTY GETTERS ---
 
-	public final String getConfigProperty(final String name, final String defaultValue) {
+	private final String getConfigProperty(final String name, final String defaultValue) {
 		String value = config.getProperty(name, defaultValue);
 		if (value == null) {
 			return defaultValue;
@@ -670,13 +249,13 @@ public final class Configurator {
 		return value;
 	}
 
-	public final boolean getConfigProperty(final String name, final boolean defaultValue) {
+	private final boolean getConfigProperty(final String name, final boolean defaultValue) {
 		final String bool = config.getProperty(name, Boolean.toString(defaultValue))
 				.toLowerCase();
 		return "true".equals(bool) || "on".equals(bool) || "1".equals(bool);
 	}
 
-	public final long getConfigProperty(final String name, final long defaultValue)
+	private final long getConfigProperty(final String name, final long defaultValue)
 			throws Exception {
 		final String number = config.getProperty(name, Long.toString(defaultValue));
 		try {
@@ -687,110 +266,14 @@ public final class Configurator {
 		}
 	}
 
-	public final FilterMask[] getFilterProperty(final String name) throws Exception {
-		return getFilterProperty(name, false);
-	}
-
-	public final FilterMask[] getFilterProperty(final String name, final boolean ignoreCase)
-			throws Exception {
-		final String list = config.getProperty(name, null);
-		try {
-			return StringUtils.splitMaskList(list, ignoreCase);
-		} catch (final Exception malformed) {
-			throw new IllegalArgumentException("Malformed mask list (" + name
-					+ ")!");
-		}
-	}
-
-	public final String getPasswordProperty(final String name) throws Exception {
-		final String encodedPassword = config.getProperty(name, null);
-		if (encodedPassword == null) {
-			throw new IllegalArgumentException("Missing password (" + name
-					+ ")!");
-		}
-		try {
-			return StringUtils.decodePassword(encodedPassword);
-		} catch (final Exception malformed) {
-			throw new IllegalArgumentException("Malformed password (" + name
-					+ ")!");
-		}
-	}
 
 	// --- GLOBAL CALENDAR CACHE ---
 
-	private final HashMap calendarCache = new HashMap();
-
-	public final synchronized void calendarChanged(final Request request)
-			throws Exception {
-
-		// Find error marker
-		final String content = StringUtils.decodeToString(request.body,
-				StringUtils.UTF_8);
-		if (content.indexOf(GCalUtilities.ERROR_MARKER) != -1) {
-			return;
-		}
-
-		// Save to-do block
-		final String toDoBlock = saveToDoBlock(request, content);
-
-		// Store previous ics file
-		final boolean isSyncJob = request.url.endsWith(".ics");
-		final CachedCalendar newCalendar = new CachedCalendar();
-		newCalendar.body = request.body;
-		newCalendar.lastModified = System.currentTimeMillis();
-		final CachedCalendar oldCalendar = (CachedCalendar) calendarCache
-				.get(request.url);
-
-		// Set ical bytes
-		if (oldCalendar != null
-				&& newCalendar.lastModified - oldCalendar.lastModified < calendarCacheTimeout) {
-
-			// Use cached ics file
-			newCalendar.previousBody = oldCalendar.body;
-		} else {
-
-			// Load original ics file
-			newCalendar.previousBody = GCalUtilities.loadCalendar(request);
-		}
-
-		// Verify ics file
-		final char[] chars = new char[Math.min(newCalendar.previousBody.length,
-				100)];
-		for (int i = 0; i < chars.length; i++) {
-			chars[i] = (char) newCalendar.previousBody[i];
-		}
-		if ((new String(chars)).indexOf(GCalUtilities.ERROR_MARKER) != -1) {
-			return;
-		}
-
-		// Store other properties
-		newCalendar.method = request.method;
-		newCalendar.url = request.url;
-		newCalendar.username = request.username;
-		newCalendar.password = request.password;
-		newCalendar.toDoBlock = toDoBlock;
-		if (calendarCache.size() >= MAX_CACHE_SIZE) {
-			calendarCache.clear();
-		}
-		calendarCache.put(request.url, newCalendar);
-
-		// Start synchronization
-		if (isSyncJob) {
-			((Synchronizer) synchronizer).calendarChanged(newCalendar);
-		}
-
-		// Notify file listener (save new calendar file)
-		if (request.method != null && fileListener != null) {
-			final Method wakeUp = fileListener.getClass().getMethod("wakeUp",
-					new Class[0]);
-			wakeUp.invoke(fileListener, new Object[0]);
-		}
-	}
+	private final HashMap<String,CachedCalendar> calendarCache = new HashMap<String,CachedCalendar>();
 
 	public final synchronized CachedCalendar getCalendar(final Request request)
 			throws Exception {
-		CachedCalendar calendar = (CachedCalendar) calendarCache
-				.get(request.url);
+		CachedCalendar calendar = calendarCache.get(request.url);
 		final boolean isSyncJob = request.url.endsWith(".ics");
 		final long now = System.currentTimeMillis();
 		if (calendar != null) {
@@ -881,15 +364,6 @@ public final class Configurator {
 			calendarCache.clear();
 		}
 		calendarCache.put(request.url, calendar);
-
-		// Do synchronization
-		if (isSyncJob) {
-			calendar.body = ((Synchronizer) synchronizer)
-					.syncronizeNow(calendar);
-
-			// Load todo block
-			calendar.toDoBlock = loadToDoBlock(request);
-		}
 
 		// Do the daily backup
 		if (backupTimeout != 0 && isSyncJob) {
@@ -1004,13 +478,14 @@ public final class Configurator {
 
 	// --- TO-DO HANDLERS ---
 
-	private final String saveToDoBlock(final Request request, String content)
+	private final String saveToDoBlock(final Request p_request, final String p_content)
 			throws Exception {
+	  String content = p_content;
 		final int s = content.indexOf(Component.VTODO);
 		final int e = content.lastIndexOf(Component.VTODO);
 		if (s == -1 || e == -1) {
-			getToDoFile(request).delete();
-			toDoCache.remove(request.url);
+			getToDoFile(p_request).delete();
+			toDoCache.remove(p_request.url);
 			return null;
 		}
 		content = content.substring(s, e);
@@ -1024,7 +499,7 @@ public final class Configurator {
 		} else {
 
 			// Slow and safe solution
-			final Calendar calendar = ICalUtilities.parseCalendar(request.body);
+			final Calendar calendar = ICalUtilities.parseCalendar(p_request.body);
 			final VToDo[] toDoArray = ICalUtilities.getToDos(calendar);
 			final QuickWriter writer = new QuickWriter();
 			for(final VToDo element : toDoArray) {
@@ -1034,17 +509,17 @@ public final class Configurator {
 		}
 
 		// Compare with cached instance
-		if (toDoBlock.equals(toDoCache.get(request.url))) {
+		if (toDoBlock.equals(toDoCache.get(p_request.url))) {
 			return toDoBlock;
 		}
 
 		// Save block
-		toDoCache.put(request.url, toDoBlock);
+		toDoCache.put(p_request.url, toDoBlock);
 		final byte[] toDoBytes = StringUtils.encodeString(toDoBlock,
 				StringUtils.UTF_8);
 		FileOutputStream fos = null;
 		try {
-			fos = new FileOutputStream(getToDoFile(request));
+			fos = new FileOutputStream(getToDoFile(p_request));
 			fos.write(toDoBytes);
 		} finally {
 			if (fos != null) {
@@ -1055,7 +530,7 @@ public final class Configurator {
 	}
 
 	private final String loadToDoBlock(final Request request) throws Exception {
-		String toDoBlock = (String) toDoCache.get(request.url);
+		String toDoBlock = toDoCache.get(request.url);
 		if (toDoBlock != null) {
 			return toDoBlock;
 		}
@@ -1075,13 +550,8 @@ public final class Configurator {
 				toDoCache.put(request.url, toDoBlock);
 				return toDoBlock;
 			} catch (final Exception ioError) {
-				try {
-					raf.close();
-				} catch (final Exception ignored) {
-				}
-				if (file != null) {
-					file.delete();
-				}
+			  Closer.close(raf);
+				file.delete();
 			}
 		}
 		return null;
@@ -1129,47 +599,4 @@ public final class Configurator {
 	public final File getWorkDirectory() {
 		return workDirectory;
 	}
-
-	// --- COMMON GMAIL POOL ---
-
-	public final GmailPool getGmailPool() {
-		return (GmailPool) gmailPool;
-	}
-
-	// --- SERVLET REQUEST PROCESSOR ---
-
-	public final Thread getServletListener() {
-		return servletListener;
-	}
-
-	// --- STANDALONE APPLICATION MARKER ---
-
-	public final boolean isStandalone() {
-		return standaloneMode;
-	}
-
-	// --- STOP LISTENERS ---
-
-	public final void interrupt() {
-
-		// Stop services
-		stopService(httpListener);
-		stopService(fileListener);
-		stopService(contactLoader);
-		stopService(mailNotifier);
-		stopService(sendMail);
-		stopService(mailTerm);
-		stopService(synchronizer);
-		stopService(gmailPool);
-	}
-
-	private static final void stopService(final Thread service) {
-		if (service != null) {
-			try {
-				service.interrupt();
-			} catch (final Exception ignored) {
-			}
-		}
-	}
-
 }

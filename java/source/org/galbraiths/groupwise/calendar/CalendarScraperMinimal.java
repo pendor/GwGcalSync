@@ -35,7 +35,7 @@ import org.htmlparser.util.NodeList;
  *
  * @author zbedell
  */
-public class CalendarScraperMinimal {
+class CalendarScraperMinimal {
   private static Log logger = LogFactory.getLog(CalendarScraperMinimal.class);
   private final GroupwiseConfig m_config;
 
@@ -45,7 +45,7 @@ public class CalendarScraperMinimal {
   private final DateFormat m_gwDateFormat = new SimpleDateFormat("MMMM d, yyyy");
   private final DateFormat m_gwTimeFormat = new SimpleDateFormat("h:mm a");
 
-  public CalendarScraperMinimal(final GroupwiseConfig p_config) {
+  protected CalendarScraperMinimal(final GroupwiseConfig p_config) {
     m_config = p_config;
 
     m_client = new HttpClient();
@@ -68,7 +68,7 @@ public class CalendarScraperMinimal {
    * @return
    * @throws Exception
    */
-  public List<CalendarEvent> getCalendarEvents(final int p_months) throws Exception {
+  protected List<CalendarEvent> getCalendarEvents(final int p_months) throws Exception {
     final List<CalendarEvent> calendarEvents = new ArrayList<CalendarEvent>();
 
     getUserContext();

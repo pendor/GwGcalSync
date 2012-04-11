@@ -65,7 +65,7 @@ public class SunHttpServer implements HttpHandler {
   /**
    * @throws IOException for compat with Simple version
    */
-  public void stop() throws IOException {
+  public void stop() throws IOException { // NO_UCD
     m_server.stop(0);
   }
 

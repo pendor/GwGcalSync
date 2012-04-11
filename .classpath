@@ -10,7 +10,6 @@
 	<classpathentry kind="lib" path="java/gcald_jars/ical4j.jar"/>
 	<classpathentry kind="lib" path="java/gcald_jars/gdata-calendar.jar"/>
 	<classpathentry kind="lib" path="java/gcald_jars/gdata-client.jar"/>
-	<classpathentry kind="lib" path="java/gcald_jars/mail.jar"/>
 	<classpathentry kind="lib" path="java/gcald_jars/jdom.jar"/>
 	<classpathentry kind="lib" path="java/gcald_jars/commons-lang.jar"/>
 	<classpathentry kind="output" path="java/build/classes"/>

@@ -13,7 +13,7 @@ import org.galbraiths.groupwise.model.GroupwiseConfig;
  *
  * @author zbedell
  */
-public class CommandLineUI {
+public class CommandLineUI { // NO_UCD
   private static Log logger = LogFactory.getLog("GwGcalSync");
 
   public static void main(final String[] args) throws Exception {
